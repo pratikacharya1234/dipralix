@@ -36,7 +36,7 @@ pub async fn fetch_markdown(url: &str) -> Result<String> {
 
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(20))
-        .user_agent("dipralix/0.0.2 (+https://github.com/dipralix)")
+        .user_agent("dipralix/0.1.0 (+https://github.com/pratikacharya1234/dipralix)")
         .build()
         .context("failed to build http client")?;
 

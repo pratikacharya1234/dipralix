@@ -1,55 +1,39 @@
-# FORGE WASM Plugin API Specification (v0.1.0-alpha)
+# WASM plugin API — design notes
 
-This document outlines the initial specification for the FORGE WASM Plugin API. Plugins allow extending FORGE with new tools, domain-specific knowledge, and custom workflows.
+**Status: not implemented.** This file describes the shape I want for a plugin system. The runtime hooks don't exist in `dipralix-cli` v0.1.0. I'm posting the design so anyone interested can argue with it before I start writing.
 
-## Architecture
+## Why a plugin system at all
 
-FORGE uses `wasmtime` as its high-performance WASM runtime. Plugins are executed in a sandboxed environment with restricted access to the host system, mediated by FORGE's capability system.
+Today, adding a new tool means editing `src/tools.rs`, recompiling, and shipping a new binary. That's fine for me, but it means you can't extend the agent without forking. A WASM plugin layer would let people drop a `.wasm` file in `~/.dipralix/plugins/` and have it show up as a tool the next time the agent runs.
 
-## Entry Points
+## Why WASM, not native plugins or scripts
 
-Every plugin must export a set of standard functions that FORGE calls during the lifecycle of a task.
+- **Sandbox by default.** No filesystem, no network, no syscalls unless I explicitly grant them. Native plugins or shell scripts would either be unsafe or require their own sandbox.
+- **Language-agnostic.** Rust, Go, TypeScript, Zig, C — anything that compiles to wasm32.
+- **One binary still works.** The dipralix binary would embed `wasmtime`. No external runtime to install.
 
-### `fn metadata() -> String`
-Returns a JSON string containing the plugin's name, version, and a list of tools it provides.
+## Plugin contract
 
-### `fn call_tool(name: &str, args: &str) -> String`
-Invoked when FORGE executes a tool provided by the plugin. Arguments and returns are JSON-encoded strings.
+Every plugin exports two functions and may import a small set of host functions for the things it can't do on its own.
 
-## Host Imports (FORGE SDK)
+```
+// Required exports
+fn metadata() -> String        // JSON: { name, version, tools: [...] }
+fn call_tool(name: &str, args: &str) -> String   // JSON in, JSON out
 
-The host provides several "hooks" that plugins can use to interact with the environment:
-
-- `forge_read_file(path: &str) -> String`
-- `forge_write_file(path: &str, content: &str)`
-- `forge_grep(pattern: &str, path: &str) -> String`
-- `forge_log(message: &str, level: i32)`
-
-## Data Format
-
-All complex data structures exchanged between the host and the WASM guest are serialized as JSON.
-
-## Example (Rust)
-
-```rust
-use serde_json::json;
-
-#[no_mangle]
-pub extern "C" fn metadata() -> *mut c_char {
-    let meta = json!({
-        "name": "my-custom-tool",
-        "version": "0.1.0",
-        "tools": ["analyze_logs"]
-    });
-    CString::new(meta.to_string()).unwrap().into_raw()
-}
-
-#[no_mangle]
-pub extern "C" fn call_tool(name: *mut c_char, args: *mut c_char) -> *mut c_char {
-    // Implementation here...
-}
+// Optional host imports (provided by dipralix to the plugin)
+fn dipralix_read_file(path: &str) -> String
+fn dipralix_write_file(path: &str, content: &str)
+fn dipralix_grep(pattern: &str, path: &str) -> String
+fn dipralix_log(message: &str, level: i32)
 ```
 
-## Security
+A plugin that only computes on its inputs doesn't need to import anything. A plugin that touches the workspace asks for the imports it needs and the user approves the capabilities at install time.
 
-Plugins must be explicitly enabled in `.forge/config.toml`. Each plugin can be granted specific permissions (e.g., `filesystem.read`, `network.access`).
+## Distribution
+
+There's no marketplace plan. Plugins are `.wasm` files. You install one by dropping it in `~/.dipralix/plugins/` (or `.dipralix/plugins/` in a repo). The agent lists them on startup, the user can disable any of them with `/plugins disable <name>`.
+
+## Timeline
+
+No commitment. The Phase 2 features in v0.1.0 (Memory Core, Comment Protocol, Approval Matrix, etc.) come first. If you want to help shape this, open an issue.

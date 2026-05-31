@@ -1,374 +1,215 @@
-<h1 align="center">DIPRALIX</h1>
+# dipralix
 
-<p align="center">
-  <b>The multi-model terminal coding agent that doesn't make you pick a side.</b><br/>
-  Free with Gemini's 1,500 req/day tier. Add Claude and GPT keys when you need them. One 12 MB Rust binary.
-</p>
+A multi-model terminal coding agent. One 12 MB binary, written in Rust. Free with Gemini's API; brings Claude and OpenAI keys along when I want them.
 
-<p align="center">
-  <a href="https://github.com/pratikacharya1234/dipralix/releases/latest"><img src="https://img.shields.io/github/v/release/pratikacharya1234/dipralix?style=for-the-badge&color=6366f1" alt="Latest release"></a>
-  <a href="https://github.com/pratikacharya1234/dipralix/releases/latest"><img src="https://img.shields.io/github/downloads/pratikacharya1234/dipralix/total?style=for-the-badge&color=10b981" alt="Downloads"></a>
-  <a href="https://github.com/pratikacharya1234/dipralix/stargazers"><img src="https://img.shields.io/github/stars/pratikacharya1234/dipralix?style=for-the-badge&color=f59e0b" alt="Stars"></a>
-  <a href="https://github.com/pratikacharya1234/dipralix/blob/main/LICENSE"><img src="https://img.shields.io/github/license/pratikacharya1234/dipralix?style=for-the-badge&color=8b5cf6" alt="MIT License"></a>
-</p>
+I built this because the rest of the field made the wrong tradeoffs for me. Cursor logged me out twice a week. Claude Code's billing made me check the dashboard before I started writing. Aider had the right philosophy but the wrong language. So I sat down, wrote my own, and shipped it.
 
-<p align="center">
-  <a href="#quick-start"><img src="https://img.shields.io/badge/install-30%20seconds-green?style=flat-square" alt="Install in 30 seconds"></a>
-  <img src="https://img.shields.io/badge/binary-12MB-lightgrey?style=flat-square" alt="Binary 12MB">
-  <img src="https://img.shields.io/badge/context-1M%20tokens-green?style=flat-square" alt="1M Token Context">
-  <img src="https://img.shields.io/badge/models-Gemini%20%7C%20Claude%20%7C%20GPT-purple?style=flat-square" alt="Multi-model">
-  <img src="https://img.shields.io/badge/built%20with-Rust-orange?style=flat-square&logo=rust" alt="Rust">
-  <img src="https://img.shields.io/badge/MCP-supported-blue?style=flat-square" alt="MCP supported">
-</p>
+It's not the best at any one thing. It is the one I reach for first.
 
-<p align="center">
-  <a href="https://site-delta-lime-58.vercel.app"><b>🌐 Website</b></a> ·
-  <a href="#quick-start"><b>📦 Install</b></a> ·
-  <a href="#whats-new-in-v010"><b>✨ What's new</b></a> ·
-  <a href="https://github.com/pratikacharya1234/dipralix/releases/latest"><b>📥 Download</b></a> ·
-  <a href="ide/vscode/"><b>🧩 VS Code extension</b></a>
-</p>
+```
+$ dipralix-cli
+  [MODEL] auto → claude-4-sonnet  (complex task → Claude balanced reasoning)
+  [OK] Loaded .dipralix/safety.toml
+  v0.1.0  ·  17 tools  ·  4-level safety  ·  MCP enabled
 
-<p align="center">
-  <img src="assets/demo-banner.png" alt="DIPRALIX NULLVOID Terminal" width="90%">
-</p>
+>>> add rate limiting to the public /api/users endpoint, 60 rpm per IP
 
-<p align="center">
-  <img src="assets/demo-chat.png" alt="DIPRALIX Domain Bootstrap &amp; Chat" width="90%">
-</p>
+  Plan:
+   1. Read src/api/users.rs                          (read_file)
+   2. Add tower::ServiceBuilder rate limiter         (edit_file)
+   3. Wire it in main.rs router                      (edit_file)
+   4. Add an integration test                        (write_file)
+   5. Build + test                                   (bash)
+
+  Continue? [Y/n]
+```
+
+That's the whole loop. It plans, it does, it verifies, it tells you what happened.
 
 ---
 
-**Dipralix** is the open-source, multi-model terminal AI coding agent. 1M token context. Built in Rust. Works with Gemini, Claude, and GPT — routing each task to the best available model automatically. Free. No subscriptions. No lock-in.
+## Install
 
-> If you like this project, **[give it a star ⭐](https://github.com/pratikacharya1234/dipralix/stargazers)** — it's the fastest way to help others discover it.
-
-### What Makes DIPRALIX Different
-
-DIPRALIX is the **only** coding agent that:
-- **Has NULLVOID** — spectral terminal theme, zero emoji, pure Unicode geometric glyphs
-- **Domain bootstrap** — pre-loads tech stack, architecture, security patterns before you code
-- **Gets smarter every session** — ALICE learns from errors and auto-injects lessons
-- **Auto-detects project conventions** — language, indentation, build system, linter config
-- **Decomposes tasks across AI models** — routes each subtask to the best provider
-- **Runs parallel subagents** — critical work to reasoning models, routine to fast models
-- **Verifies with a second model** — cross-provider consensus on critical changes
-- **Auto-researches before coding** — web searches for docs, APIs, best practices
-- **Auto-escalates on failure** — starts cheap, upgrades automatically
-
-### Comparison
-
-| | DIPRALIX | Claude Code | Cursor | Copilot |
-|---|---|---|---|---|
-| **Price** | Free | $20-200/mo | $20/mo | $10/mo |
-| **Open source** | MIT | Proprietary | Proprietary | Proprietary |
-| **Multi-model** | Gemini + Claude + GPT | Claude only | Multi-model | GPT only |
-| **Max context** | 1M tokens | 200K | ~200K | ~64K |
-| **Task decomposition** | Automatic + multi-model | Manual subagents | No | No |
-| **Consensus verification** | Cross-provider | No | No | No |
-| **Auto-escalation** | Yes | No | No | No |
-| **Pre-execution research** | Yes | No | No | No |
-| **Auto-learning (ALICE)** | **Yes** | No | No | No |
-| **Project DNA detection** | **Yes** | No | No | No |
-| **Interface** | Terminal | Terminal | VS Code | VS Code |
-| **MCP support** | Yes | Yes | Yes | No |
-| **Native integrations** | GitHub, Discord, Gmail, Drive | GitHub | None | GitHub |
-| **Terminal theme** | **NULLVOID** spectral | None | VS Code | VS Code |
-| **Free tier** | ✅ Gemini 1,500 req/day | ❌ | ❌ | ❌ |
-
-> **EMBER Voice AI** is under active development — real-time voice coding with TTS responses. Shipping in a future release.
-
-## What's New in v0.1.0
-
-Ten native features that other agents pile on through plugins and external services — built into one 12 MB Rust binary.
-
-### Core Intelligence
-- **Memory Core** — Persistent project decisions in `.dipralix/memory/decisions.md` + cross-project patterns. Two new tools (`memorize_decision`, `memorize_pattern`) the agent uses without prompting.
-- **Lazy Context** — Skills assembled per-request from `.dipralix/skills/` and `~/.dipralix/skills/`. Cuts wasted tokens on irrelevant boilerplate.
-- **Peer Review Engine** — Red Team / Blue Team / Arbitrator debate triggers automatically on high-risk bash. Rejections short-circuit execution.
-
-### Developer Experience
-- **Comment Protocol** (`/tasks`) — Write `// DIPRALIX: refactor this` in any source file. Dipralix scans, queues, executes on demand, marks `// DIPRALIX-DONE:` when finished.
-- **Plan Visualizer** (`/plan`) — Terminal-native ASCII dependency graph with risk badges (safe / review / danger) for `.dipralix/plans/current.md`.
-- **Living Docs** (`/docs sync`) — Auto-syncs `ARCHITECTURE.md` with the current codebase, including a Mermaid diagram.
-- **Code Fingerprinting** (`dipralix --init`) — Detects stack via `ProjectDna`, scaffolds `.dipralix/{project,conventions}.md`, `safety.toml`, `approval.toml`, prints a 0–100 quality score.
-
-### Power User
-- **Approval Matrix** (`/approval`) — Per-action policy with four levels (Auto / Notify / Confirm / Deny). `/approval speed fast` and `safe` flip the whole matrix in bulk.
-- **Infra Awareness** (`/infra`) — Static analysis for Dockerfile, Kubernetes manifests, and Terraform. No cloud API calls, no leaked state.
-- **Browser Engine** (`/fetch <url>`) — Reqwest fetch + HTML→Markdown extractor + on-disk cache at `~/.dipralix/cache/web/`. Headless Chromium deferred to a later release.
-
-**Breaking change:** project was renamed from FORGE to Dipralix. Binary is `dipralix-cli`, config dir is `.dipralix/`, env var is `DIPRALIX_API_KEY` (legacy `GEMINI_API_KEY` still honored).
-
-## 💯 100% Free — No Credit Card, No Subscription
-
-DIPRALIX works with **Gemini's free tier**. That means:
-
-- ✅ **0 dollars.** Forever. No trial that expires.
-- ✅ **1,500 requests per day** on Gemini Flash — more than enough for heavy coding sessions
-- ✅ **1 MILLION token context window** — 5x Claude Code, 15x Copilot
-- ✅ **No rate limit anxiety** — you're on your own API key, not someone's quota
-- ✅ **Pay only if you want to** — add Claude or GPT keys for complex tasks, keep Gemini for everything else
-
-**Get your free key in 30 seconds:**
-1. Go to https://aistudio.google.com/apikey
-2. Click "Create API Key"
-3. Copy it. That's it. No billing setup. No credit card.
+Pick the line for your machine. Each one drops the prebuilt v0.1.0 binary on your PATH.
 
 ```bash
-export GEMINI_API_KEY="your-free-key-here"
-dipralix-cli
-# That's it. You're coding with AI. For free.
-```
-
-> **Why this matters:** Claude Code costs $20-200/month plus per-token usage. Users report spending $25 in a single session. Cursor costs $20/month. Copilot costs $10/month. DIPRALIX costs nothing. Use the free Gemini tier for 90% of your work, add Claude only when you need it, switch back anytime. No lock-in. No subscription to cancel.
-
-## Quick Start
-
-Pick the install method for your OS — each downloads the prebuilt binary for v0.1.0 from GitHub Releases.
-
-### macOS · Linux
-
-```bash
+# macOS · Linux
 curl -fsSL https://raw.githubusercontent.com/pratikacharya1234/dipralix/main/install.sh | bash
 ```
 
-Detects `x86_64` and `arm64` automatically. Installs to `/usr/local/bin` (or `~/.local/bin` if it can't get sudo). Falls back to `cargo install` if your platform isn't in the prebuilt matrix.
-
-### Windows (PowerShell)
-
 ```powershell
+# Windows
 irm https://raw.githubusercontent.com/pratikacharya1234/dipralix/main/install.ps1 | iex
 ```
 
-No admin needed — installs to `%LOCALAPPDATA%\Dipralix\bin\` and adds it to your user PATH.
-
-### Build from source (any OS)
-
 ```bash
-git clone https://github.com/pratikacharya1234/dipralix.git
-cd dipralix
-cargo build --release
-./target/release/dipralix-cli --version
+# From source — needs Rust 1.75+
+git clone https://github.com/pratikacharya1234/dipralix
+cd dipralix && cargo build --release
 ```
 
-### Get a free API key (30 seconds, no credit card)
-
-→ https://aistudio.google.com/apikey
+Then get a Gemini key at https://aistudio.google.com/apikey and:
 
 ```bash
-export DIPRALIX_API_KEY="your-free-key"   # or GEMINI_API_KEY (legacy, also works)
+export DIPRALIX_API_KEY="your-key"
 dipralix-cli
 ```
 
-### Direct download
+That's it. No login server. No telemetry. No subscription. You can `dipralix-cli --version` and read every line of code that ran.
 
-Prefer to grab the binary by hand? Pick your platform on the [releases page](https://github.com/pratikacharya1234/dipralix/releases/latest):
+---
 
-| Platform | Asset |
-|---|---|
-| macOS (Apple Silicon) | `dipralix-v0.1.0-macos-arm64.tar.gz` |
-| macOS (Intel) | `dipralix-v0.1.0-macos-x86_64.tar.gz` |
-| Linux (x86_64) | `dipralix-v0.1.0-linux-x86_64.tar.gz` |
-| Windows (x86_64) | `dipralix-v0.1.0-windows-x86_64.zip` |
+## What's in the box
 
-### VS Code extension
+- **One binary.** 12 MB on macOS arm64. Static, no Node, no Python, no Docker.
+- **Three providers, one interface.** Gemini, Claude, OpenAI. Default routing is `auto` — it reads your prompt and picks a model. Override with `--model gemini-2.5-pro` when you know better.
+- **17 tools.** Read, write, edit, append, bash, list, list_symbols, search, glob, mkdir, delete, move, copy, url_fetch, git_snapshot, memorize_decision, memorize_pattern.
+- **33 integration calls.** GitHub (12), Discord (7), Gmail (7), Drive (7). OAuth2 with auto-refresh.
+- **MCP client.** Speaks JSON-RPC 2.0 over stdio. Auto-discovers tools from any MCP server you start.
+- **4-level safety.** Allow, Warn, Confirm, Deny. Configurable per project in `.dipralix/safety.toml`.
+- **Approval matrix.** Per-action policy (Auto / Notify / Confirm / Deny) in `.dipralix/approval.toml`.
+- **Memory.** Project decisions in `.dipralix/memory/`, cross-project patterns in `~/.dipralix/patterns/`. Plain markdown. Git-trackable.
+- **Comment protocol.** Write `// DIPRALIX: refactor this` in any source file. `/tasks execute N` runs it.
+- **Static infra scanning.** `/infra security` reads Dockerfile, Kubernetes YAML, and Terraform — points at the obvious issues without calling out to any cloud.
+- **1M token context** when you use Gemini. Drop your whole repo in.
 
-[`ide/vscode/`](ide/vscode/) ships a small extension that adds a "▶ Run with Dipralix" CodeLens above every `// DIPRALIX:` comment in your source — click it to spawn `dipralix-cli --prompt "<the task>"` in an integrated terminal. Build with `cd ide/vscode && npm install && npm run compile`. See the [extension README](ide/vscode/README.md) for packaging instructions.
+---
 
-## Usage
+## What's honest
 
-```bash
-# Interactive session
-dipralix-cli
+Some things I don't pretend to have figured out:
 
-# Full task pipeline — research, decompose, dispatch, verify
-dipralix-cli --prompt "/task add rate limiting to the API endpoints"
+- **MCP OAuth.** Servers that need a browser flow still want manual `mcp auth` steps. On the list.
+- **The headless browser.** `/fetch <url>` does plain HTTP today with a hand-written HTML→Markdown extractor. Pages that need JS to render don't work. Headless Chromium is in the plan, not in the build.
+- **No streaming for OpenAI tool calls.** Claude and Gemini stream, OpenAI gets the whole response at the end. It works, but it's slower to feel.
+- **Auto-routing is heuristic.** It picks based on keywords in your prompt. It's right most of the time. When it isn't, `--model` is one flag away.
+- **Approval matrix only gates bash today.** The Auto/Notify/Confirm/Deny matrix is wired for `bash` and its variants. File-tool gating ships next.
+- **Voice mode is shelved.** The EMBER module exists in the tree behind a feature flag. It's not part of the default build because the cross-platform mic story isn't where I want it.
 
-# Model selection (auto by default — routes each task to the best available model)
-dipralix-cli                                          # auto-route per message
-dipralix-cli --model claude-4-sonnet                  # pin a specific model
-dipralix-cli --model gpt-4.1 --openai-api-key "sk-..."
-dipralix-cli --model gemini-2.5-pro                   # Gemini reasoning model
+If you hit something rough, file it: https://github.com/pratikacharya1234/dipralix/issues. Use the bug template. I read all of them.
 
-# With thinking mode and web grounding
-dipralix-cli --think --grounding --model gemini-2.5-pro
+---
 
-# Single prompt, auto-apply, exit
-dipralix-cli --auto-apply --prompt "fix all compiler warnings"
-
-# Test-fix loop
-dipralix-cli --prompt "/test-fix 'cargo test' 5"
-```
-
-## Key Commands
-
-### Orchestration
-| Command | Action |
-|---|---|
-| `/task <requirement>` | Full pipeline: research → decompose → dispatch → consensus |
-| `/test-fix <cmd> [N]` | Run tests, fix failures, retry until passing |
-| `/model <name\|auto>` | Switch or auto-route models |
-| `/explain [on\|off]` | Preview planned actions before executing |
-
-### Memory & Context
-| Command | Action |
-|---|---|
-| `/memorize <fact>` | Save fact to persistent memory |
-| `/forget <keyword>` | Remove entries from memory |
-| `/memory` | View all memorized facts |
-| `/compact` | Summarize history to free context |
-| `/load [dir]` | Load directory tree into context |
-| `/fingerprint` | Scan + show quality score (0–100) |
-
-### v0.1.0 Native Features
-| Command | Action |
-|---|---|
-| `/tasks [list\|execute N\|dismiss N]` | Work the `// DIPRALIX:` comment queue |
-| `/plan [view\|risk]` | Render `.dipralix/plans/current.md` as ASCII graph |
-| `/docs sync` | Regenerate `ARCHITECTURE.md` against current code |
-| `/approval [show\|speed fast\|speed safe]` | Show / flip the approval matrix |
-| `/infra [scan\|security\|optimize]` | Static-analyze Dockerfile / K8s / Terraform |
-| `/fetch <url>` | Fetch + extract page to markdown, cached locally |
-
-### Code & Safety
-| Command | Action |
-|---|---|
-| `/undo [N]` | Revert last N file changes |
-| `/diff` | Show pending change list |
-| `/snapshot` / `/rollback` | Create or restore git snapshots |
-| `/tokens` | View context window usage |
-| `/cost` | Show session cost |
-| `/security` | Full security sweep |
-
-### Sessions & Integration
-| Command | Action |
-|---|---|
-| `/session save\|load\|list` | Manage saved sessions |
-| `/history [N]` | Show conversation history |
-| `/profile <name>` | Apply config profile |
-| `/pr <title>` | Auto-create GitHub PR |
-| `/screenshot <path>` | Vision-based code analysis |
-
-Full list: `/help`
-
-## Configuration
+## Configure
 
 `~/.dipralix/config.toml`:
 
 ```toml
-api_key = "AIza..."
-model = "gemini-2.5-flash"
-daily_budget_usd = 5.00
+# Pick one, or set all three to switch freely
+api_key            = "AIza..."     # Gemini (free at aistudio.google.com/apikey)
+anthropic_api_key  = "sk-ant-..."
+openai_api_key     = "sk-..."
 
-# Multi-model keys
-anthropic_api_key = "sk-ant-..."
-openai_api_key = "sk-..."
-
-[thinking]
-enabled = false
-budget = 8000
+model              = "auto"        # or pin: "claude-4-sonnet", "gpt-4.1", etc.
+daily_budget_usd   = 5.00          # warns when you cross it
+thinking           = false         # turn on for hard problems
 
 [integrations.github]
 token = "ghp_..."
 
 [mcp_servers.postgres]
 command = "npx"
-args = ["-y", "@modelcontextprotocol/server-postgres"]
+args    = ["-y", "@modelcontextprotocol/server-postgres"]
 
-[profiles.work]
-model = "gemini-2.5-pro"
-thinking = true
-grounding = true
+[profiles.serious]
+model            = "gemini-2.5-pro"
+thinking         = true
 daily_budget_usd = 10.0
 ```
 
-Per-project: `.dipralix/project.md` (instructions), `.dipralix/safety.toml` (permissions), `.dipralix/memory.md` (persistent facts).
+Per-project: `.dipralix/project.md` (instructions the agent reads on startup), `.dipralix/safety.toml` (which commands can run unattended), `.dipralix/approval.toml` (per-action approval level), `.dipralix/memory/` (decisions worth remembering).
 
-## Architecture
-
-```
-src/
-  main.rs            CLI entry point (127 lines)
-  agent.rs           Agentic loop, slash commands, streaming (1704 lines)
-  backend.rs         Multi-model dispatch: Gemini, Anthropic, OpenAI (1215 lines)
-  orchestrator.rs    Task decomposition, parallel subagents, consensus (919 lines)
-  types.rs           Canonical message types (Content, Part, FunctionCall) (341 lines)
-  tools.rs           16 built-in tools + dispatch (887 lines)
-  safety.rs          4-level risk classifier + per-project policy engine (315 lines)
-  diff_view.rs       Unified diff + per-hunk interactive review (308 lines)
-  snapshot.rs        In-memory undo/redo stack (58 lines)
-  session.rs         Binary session persistence (259 lines)
-  token_counter.rs   Cost tracking + budget management (235 lines)
-  audit.rs           JSON audit logging (60 lines)
-  config.rs          Config loading, profiles, context windows (172 lines)
-  project.rs         Directory loading, git clone (146 lines)
-  security.rs        Security sweep: audit + secret scan + CVE analysis (285 lines)
-  ui.rs              Terminal UI, help, context bar (329 lines)
-  mcp.rs             MCP client: JSON-RPC 2.0 over stdio (572 lines)
-  models.rs          Model resolution and discovery (147 lines)
-  integrations/
-    mod.rs           Registry + dispatch (163 lines)
-    github.rs        12 GitHub API tools (639 lines)
-    discord.rs       7 Discord API tools (409 lines)
-    google.rs        OAuth2 engine + 7 Drive + 7 Gmail tools (992 lines)
-```
-
-## Features
-
-### Agentic Loop
-Streaming output with real-time token display. Thinking/reasoning token visualization. Parallel tool execution. Configurable iteration limits. Auto-apply mode. Per-hunk diff review. Stuck detection after 3 consecutive errors. In-memory undo stack.
-
-### Multi-Model Support
-Gemini 2.5 Pro/Flash/Lite, Claude 4 Opus/Sonnet, GPT-4.1/GPT-4o/o3/o4-mini. Auto-routing by task complexity. Provider-aware model hints. SSE streaming with proper tool call round-trips per provider.
-
-### Task Orchestrator
-5-phase pipeline: Research (auto web-search) → Decompose (break into subtasks) → Dispatch (route to best models, run in parallel) → Consensus (cross-model verification) → Merge (combine results). Cost-intelligent auto-escalation on failure.
-
-### Built-in Tools (17)
-`read_file`, `write_file`, `edit_file` (fuzzy matching), `append_file`, `bash` (streaming), `list_files`, `list_symbols`, `search_files` (regex), `glob`, `create_directory`, `delete_file`, `move_file`, `copy_file`, `url_fetch` (cached), `git_snapshot`, `memorize_decision`, `memorize_pattern`
-
-### Native Integrations (33 tools)
-GitHub (12), Discord (7), Google Drive (7), Gmail (7). OAuth2 with auto-refresh.
-
-### Safety System
-4-level classification: Allow, Warn, Confirm, Deny. Pipe-to-shell detection. Per-project `.dipralix/safety.toml`. Trusted/blocked command lists.
-
-### MCP Support
-Full JSON-RPC 2.0 MCP client over stdio. Protocol 2025-03-26 compliance. Auto-discovers tools. Parallel server startup with timeout safety.
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
-
-## Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for full release history.
-
-## Star History
-
-<a href="https://www.star-history.com/#pratikacharya1234/dipralix&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=pratikacharya1234/dipralix&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=pratikacharya1234/dipralix&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=pratikacharya1234/dipralix&type=Date" />
-  </picture>
-</a>
-
-## License
-
-MIT — see [LICENSE](LICENSE).
-
-## Acknowledgements
-
-Dipralix exists because the model providers ship great APIs — Google, Anthropic, OpenAI. It exists for free because Google's Gemini tier is generous. And it stays small because Rust crates like `tokio`, `reqwest`, `clap`, `serde`, and `rustyline` do the heavy lifting. Thank you.
+`dipralix-cli --init` writes a sensible starter set of all four.
 
 ---
 
-<p align="center">
-  <a href="https://github.com/pratikacharya1234/dipralix"><b>⭐ Star on GitHub</b></a> · <a href="https://github.com/pratikacharya1234/dipralix/issues"><b>🐛 File an issue</b></a> · <a href="https://github.com/pratikacharya1234/dipralix/discussions"><b>💬 Start a discussion</b></a>
-</p>
+## How to drive it
 
-<p align="center">
-  <sub>Built with Rust. Open source. Free forever.</sub>
-</p>
+The agent runs in a REPL. Slash commands cover the things you don't want to say in English:
+
+```
+/model auto                 route per task (default)
+/model claude-4-sonnet      pin a model
+/think on                   turn thinking mode on
+/explain                    preview each tool call before it runs
+/tasks                      list // DIPRALIX: comments waiting in the codebase
+/plan view                  render .dipralix/plans/current.md as a graph
+/docs sync                  regenerate ARCHITECTURE.md
+/approval                   show the approval matrix
+/infra security             scan Dockerfile / K8s / Terraform
+/fetch https://docs.rs/...  fetch + extract markdown, cached locally
+/fingerprint                detect stack, print quality score
+/cost                       what this session has cost
+/undo                       reverse the last file change
+/help                       everything
+```
+
+Or hit it once, headless:
+
+```bash
+dipralix-cli --prompt "find every TODO older than 3 months and group by file"
+dipralix-cli --prompt "/test-fix 'cargo test' 5"
+dipralix-cli --ci                 # JSON output, exit code = success
+```
+
+---
+
+## Why I wrote this
+
+I write Rust most days. I want my tools to be Rust too. I want them to be one binary I can put on a Pi, on a server, on my laptop, the same binary. I want to read the code that's running. I want a free tier I can introduce my friends to without asking for a credit card. I want to not get logged out.
+
+The big AI shops are doing fine. They don't need my money to ship the next model. What I needed was a layer that sits *on top of* their APIs, owned by me, doing what I tell it.
+
+So that's what this is.
+
+---
+
+## Architecture (one page)
+
+```
+src/
+  main.rs            CLI entry. Resolves api keys, model, profile, then hands off.
+  agent.rs           The REPL, the agentic loop, the slash commands. Streams output.
+  backend.rs         Provider dispatch. Gemini SSE, Anthropic SSE, OpenAI non-stream.
+  orchestrator.rs    Decompose → dispatch → consensus → merge. Multi-model pipeline.
+  tools.rs           17 tools. Function declarations + handlers.
+  safety.rs          Risk classifier. Loads .dipralix/safety.toml.
+  approval.rs        Per-action approval matrix. .dipralix/approval.toml.
+  memory.rs          Persistent decisions + cross-project patterns.
+  context.rs         Lazy skill assembly from .dipralix/skills/.
+  debate.rs          Red/Blue peer review on high-risk bash.
+  comment_protocol.rs  Scans for // DIPRALIX: directives.
+  plan_visualizer.rs   ASCII dependency graph for .dipralix/plans/.
+  living_docs.rs     Regenerates ARCHITECTURE.md.
+  fingerprint.rs     Project DNA detection + quality score.
+  infra.rs           Static analysis for Dockerfile, K8s, Terraform.
+  browser.rs         Plain HTTP fetch + HTML→Markdown.
+  mcp.rs             MCP client. Protocol 2025-03-26.
+  integrations/      GitHub, Discord, Gmail, Drive.
+  session.rs         Session save/restore.
+  audit.rs           JSON audit log of every tool call.
+```
+
+If you want to add a tool, `CONTRIBUTING.md` walks you through it.
+
+---
+
+## IDE bridge
+
+There's a VS Code extension at [`ide/vscode/`](ide/vscode/). It adds one feature: a "▶ Run with Dipralix" CodeLens above every `// DIPRALIX:` comment in your source. Click it, the task runs in a terminal. Build it with `cd ide/vscode && npm install && npm run compile`. Package and install per the [extension README](ide/vscode/README.md).
+
+---
+
+## License
+
+MIT.
+
+## Thanks
+
+The model providers built the APIs. The Rust ecosystem built the rest — `tokio`, `reqwest`, `clap`, `serde`, `rustyline`, `walkdir`, `colored`, `anyhow`, `thiserror`. I just glued them together with opinions.
+
+---
+
+If this saves you an hour, star it. If it doesn't, tell me what broke.
+
+— [pratikacharya1234](https://github.com/pratikacharya1234)
