@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import LiveStats from '../components/ui/LiveStats.svelte';
 
 const features = [
 	{ title: "Memory Core",        body: "Persistent project decisions in .dipralix/memory/ + cross-project patterns. The agent remembers across sessions." },
@@ -53,6 +54,18 @@ const features = [
 					<span class="text-white/40">$ </span><span class="text-white/90">curl -fsSL https://raw.githubusercontent.com/pratikacharya1234/dipralix/main/install.sh | bash</span>
 				</div>
 			</div>
+		</div>
+	</section>
+
+	<!-- Live stats — from the Rust backend ------------------------------- -->
+	<section class="py-20 border-t border-white/5">
+		<div class="container mx-auto px-6 max-w-5xl">
+			<div class="text-center mb-10">
+				<div class="text-xs uppercase tracking-widest text-accent-primary mb-2">Live counters</div>
+				<h2 class="text-2xl md:text-3xl font-bold tracking-tighter">Honest numbers, ticking in real time.</h2>
+				<p class="text-white/50 text-sm mt-2">Polled every 5 seconds from a small Rust service on Fly.io.</p>
+			</div>
+			<LiveStats client:load />
 		</div>
 	</section>
 
