@@ -151,6 +151,10 @@ Prefer to grab the binary by hand? Pick your platform on the [releases page](htt
 | Linux (x86_64) | `dipralix-v0.1.0-linux-x86_64.tar.gz` |
 | Windows (x86_64) | `dipralix-v0.1.0-windows-x86_64.zip` |
 
+### VS Code extension
+
+[`ide/vscode/`](ide/vscode/) ships a small extension that adds a "▶ Run with Dipralix" CodeLens above every `// DIPRALIX:` comment in your source — click it to spawn `dipralix-cli --prompt "<the task>"` in an integrated terminal. Build with `cd ide/vscode && npm install && npm run compile`. See the [extension README](ide/vscode/README.md) for packaging instructions.
+
 ## Usage
 
 ```bash
@@ -160,10 +164,11 @@ dipralix-cli
 # Full task pipeline — research, decompose, dispatch, verify
 dipralix-cli --prompt "/task add rate limiting to the API endpoints"
 
-# With specific models
-dipralix-cli --model claude-4-sonnet --anthropic-api-key "sk-ant-..."
+# Model selection (auto by default — routes each task to the best available model)
+dipralix-cli                                          # auto-route per message
+dipralix-cli --model claude-4-sonnet                  # pin a specific model
 dipralix-cli --model gpt-4.1 --openai-api-key "sk-..."
-dipralix-cli --model auto     # auto-select best model per task
+dipralix-cli --model gemini-2.5-pro                   # Gemini reasoning model
 
 # With thinking mode and web grounding
 dipralix-cli --think --grounding --model gemini-2.5-pro

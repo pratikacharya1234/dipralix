@@ -1,0 +1,64 @@
+{
+  "name": "dipralix-vscode",
+  "displayName": "Dipralix",
+  "description": "Drive the Dipralix terminal agent from VS Code: open the CLI in a terminal, and run // DIPRALIX: comment tasks with a single click.",
+  "version": "0.1.0",
+  "publisher": "pratikacharya1234",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other", "AI"],
+  "keywords": ["dipralix", "ai", "coding agent", "terminal", "rust"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pratikacharya1234/dipralix",
+    "directory": "ide/vscode"
+  },
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "dipralix.openTerminal",
+        "title": "Dipralix: Open terminal session",
+        "category": "Dipralix"
+      },
+      {
+        "command": "dipralix.runTaskAt",
+        "title": "Dipralix: Run DIPRALIX: task on this line",
+        "category": "Dipralix"
+      },
+      {
+        "command": "dipralix.runFingerprint",
+        "title": "Dipralix: Fingerprint project (--fingerprint)",
+        "category": "Dipralix"
+      },
+      {
+        "command": "dipralix.init",
+        "title": "Dipralix: Initialize (.dipralix scaffolding)",
+        "category": "Dipralix"
+      }
+    ],
+    "configuration": {
+      "title": "Dipralix",
+      "properties": {
+        "dipralix.binaryPath": {
+          "type": "string",
+          "default": "dipralix-cli",
+          "description": "Path to the dipralix-cli binary. Leave as 'dipralix-cli' to use PATH."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0"
+  }
+}

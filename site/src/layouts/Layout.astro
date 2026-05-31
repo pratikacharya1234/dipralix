@@ -6,19 +6,26 @@ interface Props {
 	description?: string;
 }
 
-const { title, description = "DIPRALIX-CLI - The multi-model terminal AI coding agent written in Rust." } = Astro.props;
+const {
+	title,
+	description = "Dipralix — the multi-model terminal AI coding agent. Written in Rust. Free."
+} = Astro.props;
 ---
 
 <!doctype html>
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<meta name="generator" content={Astro.generator} />
-		<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://avatars.githubusercontent.com; font-src 'self'; connect-src 'self' https://api.github.com; worker-src 'self' blob:;" />
+		<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://avatars.githubusercontent.com; font-src 'self'; connect-src 'self' https://api.github.com;" />
 		<title>{title}</title>
 		<meta name="description" content={description} />
+		<meta property="og:title" content={title} />
+		<meta property="og:description" content={description} />
+		<meta property="og:type" content="website" />
+		<meta name="twitter:card" content="summary_large_image" />
 		<style is:global>
 			@font-face {
 				font-family: 'Inter';
@@ -40,68 +47,27 @@ const { title, description = "DIPRALIX-CLI - The multi-model terminal AI coding 
 		<header class="fixed top-0 left-0 right-0 z-50 glass border-b border-white/5">
 			<nav class="container mx-auto px-6 h-16 flex items-center justify-between">
 				<a href="/" class="text-xl font-bold tracking-tighter flex items-center gap-2">
-					<span class="w-8 h-8 bg-accent-primary rounded flex items-center justify-center text-sm">F</span>
+					<span class="w-8 h-8 bg-accent-primary rounded flex items-center justify-center text-sm font-bold">D</span>
 					DIPRALIX
 				</a>
-				<div class="hidden md:flex items-center gap-8 text-sm font-medium text-white/70">
-					<a href="/arena" class="hover:text-white transition-colors">Arena</a>
-					<a href="/dna" class="hover:text-white transition-colors">DNA</a>
-					<a href="/security" class="hover:text-white transition-colors">Security</a>
-					<a href="/docs" class="hover:text-white transition-colors">Docs</a>
-				</div>
 				<div class="flex items-center gap-4">
 					<a href="https://github.com/pratikacharya1234/dipralix" class="text-sm font-medium hover:text-accent-primary transition-colors">GitHub</a>
-					<a href="/docs" class="btn-primary py-2 px-4 text-sm">Get Started</a>
+					<a href="https://github.com/pratikacharya1234/dipralix/releases/latest" class="btn-primary py-2 px-4 text-sm">Download</a>
 				</div>
 			</nav>
 		</header>
 		<main>
 			<slot />
 		</main>
-		<footer class="py-12 border-t border-white/5 bg-surface">
-			<div class="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-8">
-				<div class="text-white/40 text-sm">
-					© 2025 DIPRALIX-CLI. Built for the next billion developers.
-				</div>
-				<div class="flex gap-6 text-white/40">
-					<a href="#" class="hover:text-white transition-colors">Twitter</a>
-					<a href="#" class="hover:text-white transition-colors">Discord</a>
-					<a href="#" class="hover:text-white transition-colors">Privacy</a>
+		<footer class="py-10 border-t border-white/5 bg-surface">
+			<div class="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-white/40">
+				<div>© 2026 Dipralix. MIT licensed. Built in Rust.</div>
+				<div class="flex gap-6">
+					<a href="https://github.com/pratikacharya1234/dipralix" class="hover:text-white transition-colors">GitHub</a>
+					<a href="https://github.com/pratikacharya1234/dipralix/releases/latest" class="hover:text-white transition-colors">Releases</a>
+					<a href="https://github.com/pratikacharya1234/dipralix/blob/main/CHANGELOG.md" class="hover:text-white transition-colors">Changelog</a>
 				</div>
 			</div>
 		</footer>
-		<script>
-			import { gsap } from 'gsap';
-			import { ScrollTrigger } from 'gsap/ScrollTrigger';
-
-			gsap.registerPlugin(ScrollTrigger);
-
-			// Fade in elements on scroll
-			gsap.utils.toArray('.fade-in').forEach((el: any) => {
-				gsap.from(el, {
-					scrollTrigger: {
-						trigger: el,
-						start: 'top 85%',
-						toggleActions: 'play none none none'
-					},
-					y: 30,
-					opacity: 0,
-					duration: 1,
-					ease: 'power3.out'
-				});
-			});
-
-			// Parallax effect for 3D backgrounds
-			window.addEventListener('mousemove', (e) => {
-				const x = (e.clientX / window.innerWidth - 0.5) * 20;
-				const y = (e.clientY / window.innerHeight - 0.5) * 20;
-				gsap.to('main', {
-					x: x * 0.1,
-					y: y * 0.1,
-					duration: 1,
-					ease: 'power2.out'
-				});
-			});
-		</script>
 	</body>
 </html>

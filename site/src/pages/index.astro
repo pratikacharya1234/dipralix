@@ -1,72 +1,152 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import DipralixCanvas from '../components/3d/DipralixCanvas.svelte';
-import Terminal from '../components/ui/Terminal.svelte';
-import Analytics from '../components/ui/Analytics.svelte';
+
+const features = [
+	{ title: "Memory Core",        body: "Persistent project decisions in .dipralix/memory/ + cross-project patterns. The agent remembers across sessions." },
+	{ title: "Lazy Context",       body: "Skills loaded per-request from .dipralix/skills/. Stops wasting tokens on irrelevant boilerplate." },
+	{ title: "Peer Review",        body: "Red/Blue team debate on high-risk bash commands. Arbitrator decides. Rejections short-circuit execution." },
+	{ title: "Comment Protocol",   body: "Write // DIPRALIX: refactor this in any source file. /tasks list → execute → marks DIPRALIX-DONE: when finished." },
+	{ title: "Plan Visualizer",    body: "Terminal ASCII dependency graph with risk badges. Parses .dipralix/plans/current.md." },
+	{ title: "Living Docs",        body: "/docs sync regenerates ARCHITECTURE.md against the current codebase, Mermaid diagram included." },
+	{ title: "Code Fingerprinting", body: "dipralix --init detects your stack, scaffolds project + safety + approval configs, prints a 0–100 quality score." },
+	{ title: "Approval Matrix",    body: "Four-level per-action policy (Auto / Notify / Confirm / Deny) loaded from .dipralix/approval.toml." },
+	{ title: "Infra Awareness",    body: "Static analysis for Dockerfile, Kubernetes, Terraform. No cloud API calls, no leaked state." },
+	{ title: "Browser Engine",     body: "/fetch <url> — reqwest + HTML→Markdown extractor + on-disk cache. No external API costs." },
+];
 ---
 
-<Layout title="DIPRALIX - The Multi-Model AI Coding Agent">
-	<section class="relative h-screen w-full flex items-center justify-center overflow-hidden">
-		<!-- 3D Background -->
-		<div class="absolute inset-0 z-0">
-			<DipralixCanvas client:load />
+<Layout title="Dipralix — multi-model terminal AI coding agent">
+	<!-- Hero ------------------------------------------------------------- -->
+	<section class="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
+		<div class="absolute inset-0 -z-10">
+			<div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(99,102,241,0.15),_transparent_50%)]"></div>
+			<div class="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
 		</div>
 
-		<!-- Hero Content -->
-		<div class="relative z-10 container mx-auto px-6 text-center">
-			<h1 class="text-6xl md:text-8xl font-bold tracking-tighter mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40">
-				SHAPE CODE <br /> LIKE METAL.
+		<div class="container mx-auto px-6 text-center max-w-4xl">
+			<div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/10 bg-white/5 text-xs font-medium tracking-widest text-white/60 mb-8">
+				<span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+				v0.1.0 — Phase 2 features shipped
+			</div>
+
+			<h1 class="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40 leading-[1.05]">
+				Code with every model.<br />
+				<span class="bg-gradient-to-r from-accent-primary to-purple-400 bg-clip-text text-transparent">Pay for none of them.</span>
 			</h1>
-			<p class="text-xl md:text-2xl text-white/60 max-w-2xl mx-auto mb-12">
-				The first autonomous coding agent that orchestrates Gemini, Claude, and GPT to build production software at terminal velocity.
+
+			<p class="text-xl md:text-2xl text-white/60 max-w-2xl mx-auto mb-10 leading-relaxed">
+				A multi-model terminal coding agent. One 12 MB Rust binary. Free with Gemini's 1,500 req/day tier. Bring Claude and GPT keys for the hard parts.
 			</p>
 
-			<div class="flex flex-col md:flex-row items-center justify-center gap-4">
-				<a href="/docs" class="btn-primary text-lg px-8 py-4 w-full md:w-auto">
-					Install Dipralix
+			<div class="flex flex-col sm:flex-row items-center justify-center gap-3 mb-12">
+				<a href="#install" class="btn-primary text-base px-8 py-4 w-full sm:w-auto font-medium">
+					Install in 30 seconds
 				</a>
-				<a href="/arena" class="px-8 py-4 glass rounded-lg font-medium hover:bg-white/5 transition-all w-full md:w-auto">
-					Watch the Arena
+				<a href="https://github.com/pratikacharya1234/dipralix" class="px-8 py-4 glass rounded-lg font-medium hover:bg-white/5 transition-all w-full sm:w-auto">
+					Star on GitHub
 				</a>
 			</div>
-		</div>
 
-		<!-- Floating Terminal -->
-		<div class="absolute bottom-12 left-1/2 -translate-x-1/2 w-full max-w-3xl px-6 z-20">
-			<Terminal client:load />
-		</div>
-
-		<!-- Gradient Overlay -->
-		<div class="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent pointer-events-none"></div>
-	</section>
-
-	<section class="py-24 bg-background relative z-10">
-		<div class="container mx-auto px-6">
-			<div class="grid grid-cols-1 md:grid-cols-3 gap-12">
-				<div class="fade-in">
-					<div class="w-12 h-12 bg-accent-primary/20 rounded-lg flex items-center justify-center mb-6">
-						<svg class="w-6 h-6 text-accent-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-					</div>
-					<h3 class="text-xl font-bold mb-4">Multi-Model Orchestration</h3>
-					<p class="text-white/60">Dipralix doesn't just use one model. It picks the best tool for the job, running tasks in parallel across Gemini, Claude, and GPT.</p>
-				</div>
-				<div class="fade-in">
-					<div class="w-12 h-12 bg-accent-secondary/20 rounded-lg flex items-center justify-center mb-6">
-						<svg class="w-6 h-6 text-accent-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21.48V22"/></svg>
-					</div>
-					<h3 class="text-xl font-bold mb-4">Bulletproof Safety</h3>
-					<p class="text-white/60">Four levels of safety classification. Real-time pipe-to-shell detection. Your system stays yours.</p>
-				</div>
-				<div class="fade-in">
-					<div class="w-12 h-12 bg-gemini/20 rounded-lg flex items-center justify-center mb-6">
-						<svg class="w-6 h-6 text-gemini" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
-					</div>
-					<h3 class="text-xl font-bold mb-4">Terminal Native</h3>
-					<p class="text-white/60">No bloated IDE plugins. Dipralix lives in your terminal, where you already work. Fast, lightweight, relentless.</p>
+			<div class="max-w-2xl mx-auto">
+				<div class="text-xs uppercase tracking-widest text-white/30 mb-3">macOS · Linux</div>
+				<div class="font-mono text-sm bg-black/40 border border-white/10 rounded-lg p-4 text-left overflow-x-auto">
+					<span class="text-white/40">$ </span><span class="text-white/90">curl -fsSL https://raw.githubusercontent.com/pratikacharya1234/dipralix/main/install.sh | bash</span>
 				</div>
 			</div>
 		</div>
 	</section>
 
-	<Analytics client:load />
+	<!-- Why -------------------------------------------------------------- -->
+	<section class="py-24 border-t border-white/5">
+		<div class="container mx-auto px-6 max-w-5xl">
+			<div class="grid md:grid-cols-3 gap-12 text-center">
+				<div>
+					<div class="text-5xl font-bold tracking-tighter mb-3 bg-gradient-to-b from-white to-white/40 bg-clip-text text-transparent">$0</div>
+					<div class="text-white/60">Forever. No trial. Use Gemini's free tier and code 1,500 requests a day with zero credit card.</div>
+				</div>
+				<div>
+					<div class="text-5xl font-bold tracking-tighter mb-3 bg-gradient-to-b from-white to-white/40 bg-clip-text text-transparent">12 MB</div>
+					<div class="text-white/60">Single static Rust binary. No Node, no Python, no Docker. Runs anywhere from a Raspberry Pi to a Mac Studio.</div>
+				</div>
+				<div>
+					<div class="text-5xl font-bold tracking-tighter mb-3 bg-gradient-to-b from-white to-white/40 bg-clip-text text-transparent">1M</div>
+					<div class="text-white/60">Token context. 5× Claude Code. 15× Copilot. Drop your entire repo into the prompt and ask hard questions.</div>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- Features grid ---------------------------------------------------- -->
+	<section class="py-24 border-t border-white/5">
+		<div class="container mx-auto px-6 max-w-6xl">
+			<div class="text-center mb-16">
+				<div class="text-xs uppercase tracking-widest text-accent-primary mb-3">Ten native features</div>
+				<h2 class="text-4xl md:text-5xl font-bold tracking-tighter mb-4">No plugins. No MCPs. No subscriptions.</h2>
+				<p class="text-white/60 max-w-2xl mx-auto">Other agents glue these together with external services and plugin marketplaces. Dipralix builds every one of them into the Rust core.</p>
+			</div>
+
+			<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+				{features.map((f) => (
+					<div class="group p-6 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/10 transition-all">
+						<div class="text-base font-semibold mb-2 text-white">{f.title}</div>
+						<div class="text-sm text-white/60 leading-relaxed">{f.body}</div>
+					</div>
+				))}
+			</div>
+		</div>
+	</section>
+
+	<!-- Install ---------------------------------------------------------- -->
+	<section id="install" class="py-24 border-t border-white/5">
+		<div class="container mx-auto px-6 max-w-3xl">
+			<div class="text-center mb-12">
+				<div class="text-xs uppercase tracking-widest text-accent-primary mb-3">Install</div>
+				<h2 class="text-4xl md:text-5xl font-bold tracking-tighter mb-4">Pick your OS.</h2>
+				<p class="text-white/60">Each command downloads the prebuilt binary for v0.1.0 and puts <code class="text-white/80 font-mono text-sm bg-white/5 px-1.5 py-0.5 rounded">dipralix-cli</code> on your PATH.</p>
+			</div>
+
+			<div class="space-y-6">
+				<div>
+					<div class="text-xs uppercase tracking-widest text-white/40 mb-2">macOS · Linux</div>
+					<div class="font-mono text-sm bg-black/40 border border-white/10 rounded-lg p-4 overflow-x-auto">
+						<span class="text-white/40">$ </span><span class="text-white/90">curl -fsSL https://raw.githubusercontent.com/pratikacharya1234/dipralix/main/install.sh | bash</span>
+					</div>
+				</div>
+				<div>
+					<div class="text-xs uppercase tracking-widest text-white/40 mb-2">Windows (PowerShell)</div>
+					<div class="font-mono text-sm bg-black/40 border border-white/10 rounded-lg p-4 overflow-x-auto">
+						<span class="text-white/40">PS&gt; </span><span class="text-white/90">irm https://raw.githubusercontent.com/pratikacharya1234/dipralix/main/install.ps1 | iex</span>
+					</div>
+				</div>
+				<div>
+					<div class="text-xs uppercase tracking-widest text-white/40 mb-2">Build from source</div>
+					<div class="font-mono text-sm bg-black/40 border border-white/10 rounded-lg p-4 overflow-x-auto leading-6">
+						<span class="text-white/40">$ </span><span class="text-white/90">git clone https://github.com/pratikacharya1234/dipralix</span><br />
+						<span class="text-white/40">$ </span><span class="text-white/90">cd dipralix &amp;&amp; cargo build --release</span>
+					</div>
+				</div>
+			</div>
+
+			<div class="mt-12 p-6 rounded-xl border border-accent-primary/30 bg-accent-primary/5">
+				<div class="text-sm font-semibold mb-2">Then get a free Gemini key (30s, no card):</div>
+				<a href="https://aistudio.google.com/apikey" class="text-accent-primary hover:underline text-sm break-all">https://aistudio.google.com/apikey</a>
+				<div class="mt-4 font-mono text-sm bg-black/40 border border-white/10 rounded-lg p-4 overflow-x-auto leading-6">
+					<span class="text-white/40">$ </span><span class="text-white/90">export DIPRALIX_API_KEY="your-free-key"</span><br />
+					<span class="text-white/40">$ </span><span class="text-white/90">dipralix-cli</span>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- CTA -------------------------------------------------------------- -->
+	<section class="py-24 border-t border-white/5">
+		<div class="container mx-auto px-6 max-w-2xl text-center">
+			<h2 class="text-3xl md:text-4xl font-bold tracking-tighter mb-4">Read the code.</h2>
+			<p class="text-white/60 mb-8">All 17 tools, the safety classifier, the agent loop — every line is open source.</p>
+			<div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+				<a href="https://github.com/pratikacharya1234/dipralix" class="btn-primary text-base px-8 py-4 w-full sm:w-auto font-medium">Open the repo</a>
+				<a href="https://github.com/pratikacharya1234/dipralix/blob/main/CHANGELOG.md" class="px-8 py-4 glass rounded-lg font-medium hover:bg-white/5 transition-all w-full sm:w-auto">Read the changelog</a>
+			</div>
+		</div>
+	</section>
 </Layout>

@@ -318,6 +318,8 @@ fn build_generation_config(thinking: bool, thinking_budget: i32) -> GenerationCo
 // ── Public entry points ────────────────────────────────────────────────────────
 
 pub async fn run_once(config: &Config, prompt: &str, screenshot: Option<&str>) -> Result<()> {
+    let resolved_config = resolve_auto_model(config, prompt);
+    let config = &resolved_config;
     let client = BackendClient::new(config)?;
 
     // Initialize MCP servers and integrations
@@ -2051,6 +2053,20 @@ fn fmt_args_compact(args: &serde_json::Value) -> String {
 
 /// Classify task complexity and return (model_name, reason).
 /// Falls back to available providers based on configured API keys.
+/// Resolve `config.model == "auto"` to a concrete model name based on the prompt.
+/// Returns a clone of `config` with `model` rewritten when "auto" was set; otherwise
+/// the original config is cloned unchanged. Non-interactive entry points call this
+/// so the backend never sees the literal string "auto" (which providers reject).
+pub fn resolve_auto_model(config: &Config, prompt: &str) -> Config {
+    let mut out = config.clone();
+    if out.model == "auto" {
+        let (picked, reason) = auto_route_model(config, prompt);
+        eprintln!("  {} auto → {}  ({})", "[MODEL]", picked, reason);
+        out.model = picked.to_string();
+    }
+    out
+}
+
 fn auto_route_model(config: &Config, message: &str) -> (&'static str, &'static str) {
     let lower = message.to_lowercase();
 

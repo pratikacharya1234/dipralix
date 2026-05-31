@@ -20,8 +20,9 @@ pub struct CiResult {
 }
 
 pub async fn run_ci(config: &Config, prompt: &str) -> Result<CiResult> {
-    let client = BackendClient::new(config)?;
-    let result = agent::run_ci_agent(&client, config, prompt).await?;
+    let resolved = agent::resolve_auto_model(config, prompt);
+    let client = BackendClient::new(&resolved)?;
+    let result = agent::run_ci_agent(&client, &resolved, prompt).await?;
 
     Ok(result)
 }

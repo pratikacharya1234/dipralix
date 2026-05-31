@@ -185,56 +185,19 @@ async fn main() -> Result<()> {
         );
     }
 
-    // Resolve model: CLI arg → config file → auto-detect from best available provider
-    let model = if let Some(m) = args.model.clone().or(file_cfg.model.clone()) {
-        m
-    } else {
-        // Try Anthropic first, then OpenAI, then Gemini
-        let anthropic_key = args.anthropic_api_key.clone()
-            .or(file_cfg.anthropic_api_key.clone())
-            .or_else(|| std::env::var("ANTHROPIC_API_KEY").ok())
-            .filter(|k| !k.is_empty());
+    // Model resolution.
+    //   1. Explicit --model flag → use it as-is
+    //   2. Otherwise → "auto": per-message routing in agent.rs picks the right model
+    //      for each task (complex → reasoning model, simple → fast model). This
+    //      replaces the old "fetch best model from first provider" heuristic, which
+    //      hardcoded specific model names that drift out of date.
+    let model = args.model.clone()
+        .or(file_cfg.model.clone())
+        .unwrap_or_else(|| "auto".to_string());
 
-        let openai_key = args.openai_api_key.clone()
-            .or(file_cfg.openai_api_key.clone())
-            .or_else(|| std::env::var("OPENAI_API_KEY").ok())
-            .filter(|k| !k.is_empty());
-
-        if let Some(key) = anthropic_key {
-            match models::fetch_anthropic_models(&key).await {
-                Ok(list) => {
-                    let best = models::resolve_best_anthropic(&list);
-                    crate::ui::nullvoid::print_model_detect(&best, "Anthropic", list.len());
-                    best
-                }
-                Err(_) => "claude-sonnet-4-20250514".to_string()
-            }
-        } else if let Some(key) = openai_key {
-            match models::fetch_openai_models(&key).await {
-                Ok(list) => {
-                    let best = models::resolve_best_openai(&list);
-                    crate::ui::nullvoid::print_model_detect(&best, "OpenAI", list.len());
-                    best
-                }
-                Err(_) => "gpt-4o".to_string()
-            }
-        } else if !api_key.is_empty() {
-            match models::fetch_available_models(&api_key).await {
-                Ok(all) => {
-                    let best = models::resolve_best_model(&all);
-                    crate::ui::nullvoid::print_model_detect(&best, "Gemini", all.len());
-                    best
-                }
-                Err(_) => "gemini-2.5-flash".to_string()
-            }
-        } else {
-            anyhow::bail!(
-                "No API key found for any provider.\n\
-                 Set DIPRALIX_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY.\n\
-                 Free keys: https://aistudio.google.com/apikey"
-            );
-        }
-    };
+    if model == "auto" {
+        crate::ui::nullvoid::print_model_detect("auto", "task-routed", 0);
+    }
 
     let thinking = args.think || file_cfg.thinking;
     let budget   = if args.think { args.think_budget } else { file_cfg.thinking_budget };
