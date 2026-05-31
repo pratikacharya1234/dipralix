@@ -87,7 +87,7 @@ pub fn print_help(
     section("COMMANDS");
 
     let cmds: &[(&str, &str)] = &[
-        ("/quit  /exit  /q",              "exit FORGE"),
+        ("/quit  /exit  /q",              "exit DIPRALIX"),
         ("/clear",                         "clear conversation history"),
         ("",                               ""),
         ("/model <name|auto|list|info>",   "switch model, list all providers, or view info"),
@@ -245,10 +245,10 @@ pub fn print_help(
 
     section("CONFIG");
 
-    println!("  {:<42} {}", "~/.forge/config.toml".cyan(), "global settings and API keys".dimmed());
-    println!("  {:<42} {}", ".forge/project.md".cyan(),    "per-project instructions (auto-loaded)".dimmed());
-    println!("  {:<42} {}", ".forge/safety.toml".cyan(),   "per-project permission policy overrides".dimmed());
-    println!("  {:<42} {}", ".forge/memory.md".cyan(),     "persistent facts written by /memorize".dimmed());
+    println!("  {:<42} {}", "~/.dipralix/config.toml".cyan(), "global settings and API keys".dimmed());
+    println!("  {:<42} {}", ".dipralix/project.md".cyan(),    "per-project instructions (auto-loaded)".dimmed());
+    println!("  {:<42} {}", ".dipralix/safety.toml".cyan(),   "per-project permission policy overrides".dimmed());
+    println!("  {:<42} {}", ".dipralix/memory.md".cyan(),     "persistent facts written by /memorize".dimmed());
     println!();
     println!("  {}", "auto_apply = false          # ask before overwriting files".bright_black());
     println!("  {}", "max_iterations = 50         # pause when tool loop exceeds limit".bright_black());

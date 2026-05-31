@@ -121,14 +121,13 @@ checksum = "1e748733b7cbc798e1434b6ac524f0c1ff2ab456fe201501e6497c8417a4fc33"
 
 [[package]]
 name = "cc"
-version = "1.2.61"
+version = "1.0.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d16d90359e986641506914ba71350897565610e87ce0ad9e6f28569db3dd5c6d"
+checksum = "066fce287b1d4eafef758e89e09d724a24808a9196fe9756b8ca90e86d0719a2"
 dependencies = [
- "find-msvc-tools",
  "jobserver",
  "libc",
- "shlex",
+ "once_cell",
 ]
 
 [[package]]
@@ -326,6 +325,34 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c87e182de0887fd5361989c677c4e8f5000cd9491d6d563161a8f3a5519fc7f"
 
 [[package]]
+name = "dipralix"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64 0.22.1",
+ "chrono",
+ "clap",
+ "colored",
+ "cpal",
+ "dirs",
+ "futures-util",
+ "glob",
+ "hound",
+ "regex",
+ "reqwest",
+ "rustyline",
+ "serde",
+ "serde_json",
+ "similar",
+ "tokio",
+ "toml",
+ "tree-sitter",
+ "tree-sitter-rust",
+ "uuid",
+ "walkdir",
+]
+
+[[package]]
 name = "dirs"
 version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -418,12 +445,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "find-msvc-tools"
-version = "0.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5baebc0774151f905a1a2cc41989300b1e6fbb29aff0ceffa1064fdd3088d582"
-
-[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -449,32 +470,6 @@ name = "foreign-types-shared"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
-
-[[package]]
-name = "forge"
-version = "0.0.2"
-dependencies = [
- "anyhow",
- "base64 0.22.1",
- "chrono",
- "clap",
- "colored",
- "cpal",
- "dirs",
- "futures-util",
- "glob",
- "hound",
- "regex",
- "reqwest",
- "rustyline",
- "serde",
- "serde_json",
- "similar",
- "tokio",
- "toml",
- "uuid",
- "walkdir",
-]
 
 [[package]]
 name = "form_urlencoded"
@@ -2014,6 +2009,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db97caf9d906fbde555dd62fa95ddba9eecfd14cb388e4f491a66d74cd5fb79a"
 dependencies = [
  "once_cell",
+]
+
+[[package]]
+name = "tree-sitter"
+version = "0.20.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e747b1f9b7b931ed39a548c1fae149101497de3c1fc8d9e18c62c1a66c683d3d"
+dependencies = [
+ "cc",
+ "regex",
+]
+
+[[package]]
+name = "tree-sitter-rust"
+version = "0.20.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0832309b0b2b6d33760ce5c0e818cb47e1d72b468516bfe4134408926fa7594"
+dependencies = [
+ "cc",
+ "tree-sitter",
 ]
 
 [[package]]

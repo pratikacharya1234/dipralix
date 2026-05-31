@@ -1,12 +1,12 @@
-# Contributing to FORGE
+# Contributing to DIPRALIX
 
 Thanks for your interest in contributing. This document covers how to set up, build, and submit changes.
 
 ## Setup
 
 ```bash
-git clone https://github.com/pratikacharya1234/forge.git
-cd forge
+git clone https://github.com/pratikacharya1234/dipralix.git
+cd dipralix
 ```
 
 ## Build
@@ -15,7 +15,7 @@ cd forge
 cargo build --release
 ```
 
-The binary will be at `target/release/forge`.
+The binary will be at `target/release/dipralix`.
 
 ## Development
 

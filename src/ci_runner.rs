@@ -27,13 +27,12 @@ pub async fn run_ci(config: &Config, prompt: &str) -> Result<CiResult> {
 }
 
 pub async fn run_pipeline(config: &Config, name: &str) -> Result<()> {
-    let path = std::path::Path::new(".forge/pipelines").join(format!("{}.toml", name));
-
+    let path = std::path::Path::new(".dipralix/pipelines").join(format!("{}.toml", name));
     if !path.exists() {
-        anyhow::bail!(
-            "Pipeline '{}' not found at {}. Create it first:\n  mkdir -p .forge/pipelines\n  forge-cli --pack .forge/pipelines/{}.toml\n\nThen add task steps to the file.",
+        return Err(anyhow::anyhow!(
+            "Pipeline '{}' not found at {}. Create it first:\n  mkdir -p .dipralix/pipelines\n  dipralix-cli --pack .dipralix/pipelines/{}.toml\n\nThen add task steps to the file.",
             name, path.display(), name
-        );
+        ));
     }
 
     let content = std::fs::read_to_string(&path)?;

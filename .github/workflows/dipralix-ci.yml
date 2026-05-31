@@ -1,0 +1,22 @@
+name: DIPRALIX CI
+on: [push]
+jobs:
+  dipralix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Build DIPRALIX
+        run: cargo build --release
+      - name: Run tests
+        run: cargo test --release
+      - name: Run DIPRALIX CI agent
+        env:
+          DIPRALIX_API_KEY: ${{ secrets.DIPRALIX_API_KEY }}
+        run: |
+          if [ -n "$DIPRALIX_API_KEY" ]; then
+            ./target/release/dipralix-cli --ci --prompt "fix any bugs or warnings"
+          else
+            echo "⊘ CI agent skipped — set DIPRALIX_API_KEY secret to enable"
+          fi

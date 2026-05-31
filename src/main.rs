@@ -2,11 +2,22 @@ use anyhow::Result;
 use clap::Parser;
 
 mod agent;
+mod approval;
+mod ast;
 mod audit;
 mod backend;
+mod browser;
+mod comment_protocol;
 mod config;
+mod context;
+mod debate;
 mod diff_view;
+mod fingerprint;
+mod infra;
 mod learning;
+mod living_docs;
+mod memory;
+mod plan_visualizer;
 mod types;
 mod integrations;
 mod mcp;
@@ -34,14 +45,14 @@ mod test_harness;
 
 #[derive(Parser, Debug)]
 #[clap(
-    name    = "forge",
-    about   = "FORGE — Multi-model terminal AI coding agent",
-    version = "0.0.2",
+    name    = "dipralix",
+    about   = "DIPRALIX — Multi-model terminal AI coding agent",
+    version = "0.1.0",
     long_about = None
 )]
 struct Args {
-    /// API key for Gemini backend (or set FORGE_API_KEY / GEMINI_API_KEY env var).
-    #[clap(short = 'k', long, env = "FORGE_API_KEY")]
+    /// API key for Gemini backend (or set DIPRALIX_API_KEY / GEMINI_API_KEY env var).
+    #[clap(short = 'k', long, env = "DIPRALIX_API_KEY")]
     api_key: Option<String>,
 
     /// Model to use (auto-detected if not specified).
@@ -115,6 +126,14 @@ struct Args {
     /// Explain planned actions before executing tools.
     #[clap(long)]
     explain: bool,
+
+    /// Initialize .dipralix/ scaffolding (project.md, conventions.md, safety.toml, approval.toml).
+    #[clap(long)]
+    init: bool,
+
+    /// Show project fingerprint and quality score, then exit.
+    #[clap(long)]
+    fingerprint: bool,
 }
 
 #[tokio::main]
@@ -122,6 +141,14 @@ async fn main() -> Result<()> {
     let args = Args::parse();
 
     // Handle non-interactive modes
+    if args.init {
+        fingerprint::run_init()?;
+        return Ok(());
+    }
+    if args.fingerprint {
+        fingerprint::run_fingerprint();
+        return Ok(());
+    }
     if let Some(ref output) = args.pack {
         let msg = packer::pack_project(Some(output))?;
         println!("  ⊞ {}", msg);
@@ -140,7 +167,7 @@ async fn main() -> Result<()> {
 
     let api_key = args.api_key
         .or(file_cfg.api_key)
-        .or_else(|| std::env::var("FORGE_API_KEY").ok())
+        .or_else(|| std::env::var("DIPRALIX_API_KEY").ok())
         .or_else(|| std::env::var("GEMINI_API_KEY").ok())
         .unwrap_or_else(|| {
             if has_alt_key {
@@ -153,7 +180,7 @@ async fn main() -> Result<()> {
     if api_key.is_empty() && !has_alt_key {
         anyhow::bail!(
             "No API key found.\n\
-             Set FORGE_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY.\n\
+             Set DIPRALIX_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY.\n\
              Free Gemini key: https://aistudio.google.com/apikey"
         );
     }
@@ -203,7 +230,7 @@ async fn main() -> Result<()> {
         } else {
             anyhow::bail!(
                 "No API key found for any provider.\n\
-                 Set FORGE_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY.\n\
+                 Set DIPRALIX_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY.\n\
                  Free keys: https://aistudio.google.com/apikey"
             );
         }

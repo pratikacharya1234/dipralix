@@ -1,6 +1,35 @@
 # Changelog
 
-All notable changes to FORGE are documented in this file.
+All notable changes to Dipralix (formerly FORGE) are documented in this file.
+
+## [0.1.0] — 2026-05-31
+
+### Breaking
+- **Renamed FORGE → Dipralix.** Binary is now `dipralix-cli`. Config directory `.forge/` → `.dipralix/`. Env var `FORGE_API_KEY` → `DIPRALIX_API_KEY` (legacy `GEMINI_API_KEY` still honored). CI workflow renamed `.github/workflows/dipralix-ci.yml`. History file moved to `~/.dipralix-history`.
+
+### Added — Phase 2A: Core Intelligence
+- **Memory Core (`src/memory.rs`):** Persistent project decisions in `.dipralix/memory/decisions.md` and cross-project patterns in `~/.dipralix/patterns/`. New AI tools `memorize_decision` and `memorize_pattern`. Memory injected into the system prompt.
+- **Lazy Context (`src/context.rs`):** `ContextAssembler` dynamically loads skills from `.dipralix/skills/` (project) and `~/.dipralix/skills/` (global) based on detected `ProjectDna`. Reduces wasted tokens on irrelevant context.
+- **Peer Review Engine (`src/debate.rs`):** Multi-model Red Team vs Blue Team debate on high-risk bash commands (Confirm/Deny). Arbitrator decides; rejections short-circuit execution and feed back to the main agent.
+
+### Added — Phase 2B: Developer Experience
+- **Living Documentation (`src/living_docs.rs`, `/docs sync`):** Auto-syncs `ARCHITECTURE.md` against the current codebase using the configured backend.
+- **Comment Protocol (`src/comment_protocol.rs`, `/tasks`):** Scans the workspace for `DIPRALIX:` directives in source comments across Rust, JS/TS, Python, Go, YAML, TOML, MD. Commands: `/tasks list`, `/tasks execute N`, `/tasks dismiss N` (rewrites the marker to `DIPRALIX-DONE:`).
+- **Plan Visualizer (`src/plan_visualizer.rs`, `/plan`):** Terminal-native ASCII plan view with status glyphs, dependency annotations, risk badges (safe/review/danger), and a progress bar. Parses `.dipralix/plans/current.md`.
+- **Code Fingerprinting (`src/fingerprint.rs`):** New `dipralix --init` scaffolds `.dipralix/{project,conventions}.md`, `safety.toml`, and `approval.toml` from detected stack. New `dipralix --fingerprint` and `/fingerprint` print a quality score (0–100) with prioritized suggestions.
+
+### Added — Phase 2C: Power User Features
+- **Approval Matrix (`src/approval.rs`, `/approval`):** Four-level per-action approval policy (Auto / Notify / Confirm / Deny) loaded from `.dipralix/approval.toml`. Sub-classifies bash by command shape (sudo, rm, git push, docker run, curl). `/approval speed fast` and `/approval speed safe` flip the matrix in bulk.
+- **Infra Awareness (`src/infra.rs`, `/infra`):** Static analysis for Dockerfile (latest tag, root user, ENV secrets, single-stage), Kubernetes manifests (resource limits, probes, runAsNonRoot, privileged), and Terraform (open ingress, public-read ACL, encryption disabled). Pure text scan — no cloud API calls.
+- **Browser Engine, lite (`src/browser.rs`, `/fetch <url>`):** reqwest-based fetcher with simple HTML→Markdown extraction and on-disk cache at `~/.dipralix/cache/web/`. Headless Chromium deferred to a later release.
+
+### Changed
+- `dipralix init` now creates `.dipralix/memory/`, `.dipralix/skills/`, and `.dipralix/plans/` alongside the config scaffolding.
+- Stale `core_tool_count_is_correct` assertion updated from 14 to 17 to reflect the new memory tools.
+
+### Fixed
+- `/docs` handler compile error — now constructs a local `BackendClient` via `active_config(...)` instead of referencing an out-of-scope `client`.
+- Cleaned unused imports in `context.rs`, `debate.rs`, `living_docs.rs`.
 
 ## [0.0.2] — 2026-04-30
 
@@ -62,7 +91,7 @@ FORGE v0.0.1 — the open-source, multi-model terminal coding agent. 1M token co
 - Handles truncated output for large test suites
 
 **Persistent Memory**
-- `/memorize <fact>` saves to `.forge/memory.md`
+- `/memorize <fact>` saves to `.dipralix/memory.md`
 - `/forget <keyword>` removes matching entries
 - `/memory` displays all memorized facts
 - Auto-injected into system prompt each turn
@@ -81,7 +110,7 @@ FORGE v0.0.1 — the open-source, multi-model terminal coding agent. 1M token co
 **Safety System**
 - 4-level risk classification: Allow, Warn, Confirm, Deny
 - Pipe-to-shell detection and blocking
-- Per-project `.forge/safety.toml` with category-level overrides
+- Per-project `.dipralix/safety.toml` with category-level overrides
 - Trusted/blocked command lists
 
 **Diff & Undo**
@@ -119,7 +148,7 @@ FORGE v0.0.1 — the open-source, multi-model terminal coding agent. 1M token co
 - Gmail: 7 tools (send, list, search, labels, read status)
 
 **Named Profiles**
-- Configurable profiles in `~/.forge/config.toml`
+- Configurable profiles in `~/.dipralix/config.toml`
 - Per-profile model, thinking, grounding, auto_apply, budget
 - `/profile` command for switching
 
@@ -137,3 +166,4 @@ FORGE v0.0.1 — the open-source, multi-model terminal coding agent. 1M token co
 - `/debug`: Debug information dump
 - `/history`: Show conversation history
 - `/cost`: Show session cost breakdown
+kdown

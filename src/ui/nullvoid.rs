@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// FORGE ◈ NULLVOID Terminal Theme
+// DIPRALIX ◈ NULLVOID Terminal Theme
 // Phantom-Hacker Aesthetic — "Wraith-Core Engine"
 //
 // Concept: spectral echoes of computation; phosphor light in absolute dark.
@@ -28,10 +28,10 @@ fn cursor_col_1() -> &'static str  { "\x1b[1G" } // move to col 1
 // NULLVOID Palette (RGB true-color foreground)
 // ══════════════════════════════════════════════════════════════════════════════
 //
-// ◈ Phosphor Mint  #3DFF9A  → status, success, E-letter
-// ◈ Molten Fire    #FF5C1A  → forge heat, errors, F-letter accent
-// ◈ Plasma Cyan    #00D4FF  → data streams, info, O-letter
-// ◈ Void Violet    #7B51FF  → cipher band, headers, G-letter
+// ◈ Phosphor Mint  #3DFF9A  → status, success, A-letter
+// ◈ Molten Fire    #FF5C1A  → dipralix heat, errors, D-letter accent
+// ◈ Plasma Cyan    #00D4FF  → data streams, info, I-letter
+// ◈ Void Violet    #7B51FF  → cipher band, headers, R-letter
 // ◈ Void Amber     #FFB86C  → warnings, models, filenames
 // ◈ Bright         #CDD6F4  → primary output text
 // ◈ Body Text      #8892B0  → secondary text
@@ -53,7 +53,7 @@ pub const GHOST:  &str = "\x1b[38;2;18;24;52m";
 // NULLVOID Icon Set (Unicode, never emoji)
 // ══════════════════════════════════════════════════════════════════════════════
 
-pub const I_MARK:   &str = "◈";  // forge mark / status
+pub const I_MARK:   &str = "◈";  // dipralix mark / status
 pub const I_TARGET: &str = "⌖";  // crosshair / analysis / secure
 pub const I_PROC:   &str = "⎔";  // processor / settings
 pub const I_GRID:   &str = "⊞";  // files / context grid
@@ -77,70 +77,70 @@ const I_DOT:    &str = "·";  // faint separator dot
 pub const SPINNER: [&str; 4] = [I_HALF, I_HALF2, I_HALF3, I_HALF4];
 
 // ══════════════════════════════════════════════════════════════════════════════
-// FORGE Logo — Spectral Ghost Layer
+// DIPRALIX Logo — Spectral Ghost Layer
 // Uses ░ fill chars. Printed first, then cursor moves UP so the
 // main colored art overlays on top (ghost peeks through edges).
 // ══════════════════════════════════════════════════════════════════════════════
 
-const FORGE_GHOST: [&str; 6] = [
-    " ░███████░ ░██████░ ░██████░ ░██████░ ░███████░",
-    " ░██░░░░░  ░██░░██░ ░██░░██░ ░██░░██░ ░██░░░░░░",
-    " ░█████░   ░██░░██░ ░██████░ ░██░░██░ ░█████░░░",
-    " ░██░░░░   ░██░░██░ ░██░░██░ ░██░░██░ ░██░░░░░░",
-    " ░██░       ░████░  ░██░░██░  ░████░  ░███████░",
-    "                                                 ",
+const DIPRALIX_GHOST: [&str; 6] = [
+    " ░██████░  ░██░ ░██████░ ░██████░  ░█████░ ",
+    " ░██░░░██░ ░██░ ░██░░░██░░██░░░██░░██░░░██░",
+    " ░██░  ██░ ░██░ ░██████░ ░██████░ ░███████░",
+    " ░██░  ██░ ░██░ ░██░░░░  ░██░░░██░░██░░░██░",
+    " ░██████░  ░██░ ░██░     ░██░  ██░░██░  ██░",
+    "                                           ",
 ];
 
 // ══════════════════════════════════════════════════════════════════════════════
-// FORGE Logo — Colored Main Art
-// Each letter colored: F=FIRE O=PLASMA R=BRIGHT G=VIOLET E=MINT
+// DIPRALIX Logo — Colored Main Art
+// Each letter colored: D=FIRE I=PLASMA P=BRIGHT R=VIOLET A=MINT
 // ══════════════════════════════════════════════════════════════════════════════
 
 type Segment = (&'static str, &'static str); // (ansi_color, text)
 
-fn forge_lines() -> [[Segment; 5]; 6] {
+fn dipralix_lines() -> [[Segment; 5]; 6] {
     [
         [
-            (FIRE,   "███████╗"),
-            (PLASMA, " ██████╗ "),
-            (BRIGHT, "██████╗  "),
-            (VIOLET, " ██████╗ "),
-            (MINT,   "███████╗"),
+            (FIRE,   "██████╗ "),
+            (PLASMA, " ██╗ "),
+            (BRIGHT, "██████╗ "),
+            (VIOLET, "██████╗ "),
+            (MINT,   " █████╗ "),
         ],
         [
-            (FIRE,   "██╔════╝"),
-            (PLASMA, "██╔═══██╗"),
-            (BRIGHT, "██╔══██╗ "),
-            (VIOLET, "██╔════╝ "),
-            (MINT,   "██╔════╝"),
+            (FIRE,   "██╔══██╗"),
+            (PLASMA, " ██║ "),
+            (BRIGHT, "██╔══██╗"),
+            (VIOLET, "██╔══██╗"),
+            (MINT,   "██╔══██╗"),
         ],
         [
-            (FIRE,   "█████╗  "),
-            (PLASMA, "██║   ██║"),
-            (BRIGHT, "██████╔╝ "),
-            (VIOLET, "██║  ███╗"),
-            (MINT,   "█████╗  "),
+            (FIRE,   "██║  ██║"),
+            (PLASMA, " ██║ "),
+            (BRIGHT, "██████╔╝"),
+            (VIOLET, "██████╔╝"),
+            (MINT,   "███████║"),
         ],
         [
-            (FIRE,   "██╔══╝  "),
-            (PLASMA, "██║   ██║"),
-            (BRIGHT, "██╔══██╗ "),
-            (VIOLET, "██║   ██║"),
-            (MINT,   "██╔══╝  "),
+            (FIRE,   "██║  ██║"),
+            (PLASMA, " ██║ "),
+            (BRIGHT, "██╔═══╝ "),
+            (VIOLET, "██╔══██╗"),
+            (MINT,   "██╔══██║"),
         ],
         [
-            (FIRE,   "██║     "),
-            (PLASMA, "╚██████╔╝"),
-            (BRIGHT, "██║  ██║ "),
-            (VIOLET, "╚██████╔╝"),
-            (MINT,   "███████╗"),
+            (FIRE,   "██████╔╝"),
+            (PLASMA, " ██║ "),
+            (BRIGHT, "██║     "),
+            (VIOLET, "██║  ██║"),
+            (MINT,   "██║  ██║"),
         ],
         [
-            (MUTED,  "╚═╝     "),
-            (PLASMA, " ╚═════╝ "),
-            (BRIGHT, "╚═╝  ╚═╝ "),
-            (VIOLET, " ╚═════╝ "),
-            (MUTED,  "╚══════╝"),
+            (FIRE,   "╚═════╝ "),
+            (PLASMA, " ╚═╝ "),
+            (BRIGHT, "╚═╝     "),
+            (VIOLET, "╚═╝  ╚═╝"),
+            (MINT,   "╚═╝  ╚═╝"),
         ],
     ]
 }
@@ -149,20 +149,20 @@ fn forge_lines() -> [[Segment; 5]; 6] {
 // Logo renderer — ghost + overlay technique
 // ══════════════════════════════════════════════════════════════════════════════
 
-pub fn print_forge_logo() {
+pub fn print_dipralix_logo() {
     let stdout = io::stdout();
     let mut w = io::BufWriter::new(stdout.lock());
 
     // ── 1. Print ghost (dim, 1-col offset to the right) ──────────────────────
-    for line in &FORGE_GHOST {
+    for line in &DIPRALIX_GHOST {
         writeln!(w, "{GHOST}{DIM}  {line}{RESET}").unwrap();
     }
 
     // ── 2. Move cursor UP to beginning of ghost ───────────────────────────────
-    write!(w, "{}", cursor_up(FORGE_GHOST.len())).unwrap();
+    write!(w, "{}", cursor_up(DIPRALIX_GHOST.len())).unwrap();
 
     // ── 3. Overlay main colored art — ghost ░ chars peek around the edges ─────
-    for segments in &forge_lines() {
+    for segments in &dipralix_lines() {
         write!(w, "{CLRLN}{} ", cursor_col_1()).unwrap();
         for (color, text) in segments {
             write!(w, "{color}{text}").unwrap();
@@ -185,7 +185,7 @@ pub fn print_banner() {
     let bin = std::env::current_exe()
         .ok()
         .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
-        .unwrap_or_else(|| "forge-cli".into());
+        .unwrap_or_else(|| "dipralix-cli".into());
     let pid    = std::process::id();
     let arch   = std::env::consts::ARCH;
     let os     = std::env::consts::OS;
@@ -200,10 +200,10 @@ pub fn print_banner() {
     ).unwrap();
     thin_rule(&mut w);
 
-    // ── FORGE logo (ghost + overlay) ─────────────────────────────────────────
+    // ── DIPRALIX logo (ghost + overlay) ─────────────────────────────────────────
     w.flush().unwrap();
     drop(w);
-    print_forge_logo();
+    print_dipralix_logo();
     let stdout = io::stdout();
     let mut w = io::BufWriter::new(stdout.lock());
 
@@ -214,7 +214,7 @@ pub fn print_banner() {
          {FIRE}{I_PROC} 14 Tools{RESET}  {MUTED}|{RESET} \
          {PLASMA}{I_GRID} 1M Context{RESET}  {MUTED}|{RESET} \
          {VIOLET}{I_TARGET} Multi-Model{RESET}  {MUTED}|{RESET} \
-         {AMBER}{I_BRANCH} .forge/project.md{RESET}"
+         {AMBER}{I_BRANCH} .dipralix/project.md{RESET}"
     ).unwrap();
     thin_rule(&mut w);
 
@@ -493,12 +493,12 @@ fn main() {
     print_thinking("gemini-3-flash");
     print_response_header();
     print_response_body(
-        "Hey. I'm FORGE. I'm ready to work on the codebase.\n\
+        "Hey. I'm DIPRALIX. I'm ready to work on the codebase.\n\
          \n\
          I've loaded the project context:\n\
-         — Project: FORGE (Rust-based AI coding agent)\n\
+         — Project: DIPRALIX (Rust-based AI coding agent)\n\
          — Tech Stack: Rust, Tokio, Reqwest, Clap, Serde\n\
-         — Working Directory: /home/pratik/Desktop/forge\n\
+         — Working Directory: /home/pratik/Desktop/dipralix\n\
          \n\
          What are we building today?"
     );
@@ -514,7 +514,7 @@ fn main() {
         "Operating at peak performance.\n\
          Context window clear, tools primed, ready to ship.\n\
          \n\
-         What's on the FORGE roadmap today? Ready to dive into\n\
+         What's on the DIPRALIX roadmap today? Ready to dive into\n\
          the Rust source, run tests, or implement new features."
     );
     print_token_stats(3, 68, 96, 0.0013, 7, 0, 2);

@@ -308,7 +308,7 @@ pub fn resolve_best_openai(models: &[(String, String)]) -> String {
 /// Returns (model_name, api_key). Tries: same-provider alternative → different provider.
 pub fn pick_fallback_model(current: &str, config: &crate::config::Config) -> (String, String) {
     let gemini_key = std::env::var("GEMINI_API_KEY")
-        .or_else(|_| std::env::var("FORGE_API_KEY"))
+        .or_else(|_| std::env::var("DIPRALIX_API_KEY"))
         .unwrap_or_else(|_| config.api_key.clone());
     let anthropic_key: String = std::env::var("ANTHROPIC_API_KEY")
         .unwrap_or_else(|_| config.anthropic_api_key.clone().unwrap_or_default());

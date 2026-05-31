@@ -257,7 +257,7 @@ impl McpServer {
                     "protocolVersion": "2025-03-26",
                     "capabilities": {},
                     "clientInfo": {
-                        "name": "forge",
+                        "name": "dipralix",
                         "version": "0.0.1"
                     }
                 })),

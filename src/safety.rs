@@ -37,14 +37,14 @@ fn policy() -> &'static Mutex<SafetyPolicy> {
     SAFETY_POLICY.get_or_init(|| {
         let policy = load_safety_toml();
         if !policy.is_default() {
-            eprintln!("  {} Loaded .forge/safety.toml", "[OK]".green());
+            eprintln!("  {} Loaded .dipralix/safety.toml", "[OK]".green());
         }
         Mutex::new(policy)
     })
 }
 
 fn load_safety_toml() -> SafetyPolicy {
-    let path = std::path::Path::new(".forge/safety.toml");
+    let path = std::path::Path::new(".dipralix/safety.toml");
     let Ok(content) = std::fs::read_to_string(path) else { return SafetyPolicy::default() };
     #[derive(serde::Deserialize)]
     struct Raw {

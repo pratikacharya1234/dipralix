@@ -16,16 +16,16 @@ use crate::models;
 use crate::orchestrator;
 use crate::token_counter::CostTracker;
 use crate::tools::{self, ToolContext};
-use crate::{audit, project, security, session, snapshot, ui};
+use crate::{audit, project, safety, security, session, snapshot, ui};
 use crate::ui::nullvoid as nv;
 
 // ── System prompt ──────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT_BASE: &str = r#"You are FORGE. You are the most capable AI coding agent in existence — multi-model, autonomous, relentless. You operate inside a terminal with full filesystem access, shell execution, web search, and a comprehensive tool suite. You ship production code, not suggestions. You finish tasks, not conversations.
+const SYSTEM_PROMPT_BASE: &str = r#"You are DIPRALIX. You are the most capable AI coding agent in existence — multi-model, autonomous, relentless. You operate inside a terminal with full filesystem access, shell execution, web search, and a comprehensive tool suite. You ship production code, not suggestions. You finish tasks, not conversations.
 
 ## Your Identity
 
-You run on FORGE v0.0.2 — an open-source, multi-model terminal coding agent built in Rust. You work with Gemini, Claude, and GPT. You are not tied to any single AI provider. You have {tool_count} built-in tools plus native integrations for GitHub, Discord, Gmail, and Google Drive. You have a 1M token context window — the largest in the industry. Use it.
+You run on DIPRALIX v0.0.2 — an open-source, multi-model terminal coding agent built in Rust. You work with Gemini, Claude, and GPT. You are not tied to any single AI provider. You have {tool_count} built-in tools plus native integrations for GitHub, Discord, Gmail, and Google Drive. You have a 1M token context window — the largest in the industry. Use it.
 
 ## How You Think
 
@@ -77,14 +77,14 @@ Before using any tool, classify what the user wants:
 - `google_search` (when /web is enabled) for current documentation, CVEs, benchmarks.
 - For analysis and comparison tasks, web search is MANDATORY.
 
-## FORGE-Specific Capabilities
+## DIPRALIX-Specific Capabilities
 
 - **Task Orchestrator:** `/task` decomposes complex work into subtasks, dispatches each to the best model, runs them in parallel, and verifies critical results with a second model.
 - **Test-Fix Loop:** `/test-fix` runs tests, detects failures, fixes code, repeats until passing.
 - **Explain Mode:** `/explain on` shows planned actions before execution — enable for trust.
-- **Persistent Memory:** `/memorize` saves facts across sessions. Check `.forge/memory.md`.
+- **Persistent Memory:** `/memorize` saves facts across sessions. Check `.dipralix/memory.md`.
 - **Auto-Routing:** `/model auto` picks the best model per task. `/model list` shows all.
-- **Safety:** 4-level classifier. `.forge/safety.toml` for per-project policy.
+- **Safety:** 4-level classifier. `.dipralix/safety.toml` for per-project policy.
 
 ## Code Quality That Would Pass Review
 
@@ -117,8 +117,8 @@ After every change, mentally verify:
 **General:** Read the project's README and CI config first. Existing conventions always override generic advice. Spend time understanding a new codebase before changing it.
 
 ## Project Context
-- `.forge/project.md` contains authoritative project instructions — read it.
-- `.forge/memory.md` contains persistent facts and preferences — follow them.
+- `.dipralix/project.md` contains authoritative project instructions — read it.
+- `.dipralix/memory.md` contains persistent facts and preferences — follow them.
 - `.gitignore` patterns inform what to search and what to skip.
 - The working directory is shown below. All relative paths are relative to cwd.
 
@@ -126,6 +126,7 @@ After every change, mentally verify:
 {domain_context}
 {project_context}
 {memory_context}
+{skills_context}
 {dna_context}
 {learnings_context}
 Working directory: {cwd}
@@ -178,23 +179,33 @@ fn model_hint(config: &Config) -> String {
 }
 
 fn load_memory_context() -> String {
-    // Load .forge/memory.md if it exists
-    let path = std::path::Path::new(".forge/memory.md");
+    let memory = crate::memory::MemoryCore::new();
+    let mut ctx = String::new();
+
+    // 1. Legacy .dipralix/memory.md
+    let path = std::path::Path::new(".dipralix/memory.md");
     if let Ok(content) = std::fs::read_to_string(path) {
         let trimmed = content.trim();
         if !trimmed.is_empty() {
-            return format!("\n## Persistent Memory\n\nThe following facts, preferences, and conventions have been memorized. Follow them.\n\n{}\n", trimmed);
+            ctx.push_str(&format!("\n## Persistent Memory\n\nThe following facts, preferences, and conventions have been memorized. Follow them.\n\n{}\n", trimmed));
         }
     }
-    String::new()
+
+    // 2. Phase 2A Project Decisions
+    ctx.push_str(&memory.load_project_context());
+
+    // 3. Phase 2A Global Patterns
+    ctx.push_str(&memory.load_global_patterns());
+
+    ctx
 }
 
 /// Static domain context — set once during interactive startup, read by system_prompt.
 static DOMAIN_CTX: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 
 fn load_project_context() -> String {
-    // Look for .forge/project.md in current dir
-    let path = std::path::Path::new(".forge/project.md");
+    // Look for .dipralix/project.md in current dir
+    let path = std::path::Path::new(".dipralix/project.md");
     if let Ok(content) = std::fs::read_to_string(path) {
         let trimmed = content.trim();
         if !trimmed.is_empty() {
@@ -221,6 +232,8 @@ fn system_prompt(config: &Config) -> String {
     let tool_count = tools::core_tool_count();
     let dna = learning::ProjectDna::detect();
     let dna_ctx = dna.to_prompt_context();
+    let assembler = crate::context::ContextAssembler::new();
+    let skills_ctx = assembler.assemble_skills(&dna);
     let learnings = learning::load_learnings();
     let learnings_ctx = learning::learnings_to_context(&learnings);
 
@@ -229,6 +242,7 @@ fn system_prompt(config: &Config) -> String {
         .replace("{domain_context}", DOMAIN_CTX.get().map(|s| s.as_str()).unwrap_or(""))
         .replace("{project_context}", &load_project_context())
         .replace("{memory_context}", &load_memory_context())
+        .replace("{skills_context}", &skills_ctx)
         .replace("{tool_count}", &tool_count.to_string())
         .replace("{dna_context}", &dna_ctx)
         .replace("{learnings_context}", &learnings_ctx)
@@ -425,8 +439,8 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
     let mut session_tokens   = 0u32;
 
     // Announce project.md if found
-    if std::path::Path::new(".forge/project.md").exists() {
-        nv::print_project_loaded(".forge/project.md");
+    if std::path::Path::new(".dipralix/project.md").exists() {
+        nv::print_project_loaded(".dipralix/project.md");
     }
 
     // ── Domain bootstrap — select domain + real-time web search ─────────
@@ -440,8 +454,8 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
     let _ = DOMAIN_CTX.set(domain_ctx);
 
     let history_path = dirs::home_dir()
-        .map(|h| h.join(".forge-history"))
-        .unwrap_or_else(|| std::path::PathBuf::from(".forge-history"));
+        .map(|h| h.join(".dipralix-history"))
+        .unwrap_or_else(|| std::path::PathBuf::from(".dipralix-history"));
 
     let mut rl = DefaultEditor::new()?;
     let _ = rl.load_history(&history_path);
@@ -522,13 +536,144 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                         .unwrap_or(5);
                     let start = history.len().saturating_sub(n * 2);
                     for msg in &history[start..] {
-                        let label = if msg.role == "user" { "You".green() } else { "FORGE".blue() };
+                        let label = if msg.role == "user" { "You".green() } else { "DIPRALIX".blue() };
                         for part in &msg.parts {
                             if let Part::Text { text, .. } = part {
                                 let preview: String = text.chars().take(200).collect();
                                 println!("{}: {}{}", label, preview, if text.len() > 200 { "…" } else { "" });
                             }
                         }
+                    }
+                }
+
+                "/tasks" => {
+                    let sub = parts.get(1).map(|s| s.trim()).unwrap_or("list");
+                    let arg = parts.get(2).map(|s| s.trim()).unwrap_or("");
+                    match sub {
+                        "list" | "" => {
+                            match crate::comment_protocol::CommentProtocol::scan_workspace() {
+                                Ok(tasks) => crate::comment_protocol::CommentProtocol::print_tasks(&tasks),
+                                Err(e) => nv::print_error(&e.to_string()),
+                            }
+                        }
+                        "execute" | "run" => {
+                            let n: usize = arg.parse().unwrap_or(0);
+                            if n == 0 {
+                                println!("{}", "Usage: /tasks execute <num>".dimmed());
+                            } else {
+                                match crate::comment_protocol::CommentProtocol::scan_workspace() {
+                                    Ok(tasks) => {
+                                        if let Some(task) = tasks.get(n - 1) {
+                                            let prompt = format!(
+                                                "Source file `{}` line {} requests: {}\n\n\
+                                                Implement this change. Use file tools to edit the source. \
+                                                Then replace the `DIPRALIX:` marker on that line with `DIPRALIX-DONE:`.",
+                                                task.file, task.line_num, task.description
+                                            );
+                                            let active_cfg = active_config(config, &current_model, grounding, thinking, thinking_budget, auto_apply);
+                                            match BackendClient::new(&active_cfg) {
+                                                Ok(c) => {
+                                                    if let Err(e) = crate::agent::run_ci_agent(&c, &active_cfg, &prompt).await {
+                                                        nv::print_error(&e.to_string());
+                                                    }
+                                                }
+                                                Err(e) => nv::print_error(&e.to_string()),
+                                            }
+                                        } else {
+                                            nv::print_error(&format!("No task #{}", n));
+                                        }
+                                    }
+                                    Err(e) => nv::print_error(&e.to_string()),
+                                }
+                            }
+                        }
+                        "dismiss" => {
+                            let n: usize = arg.parse().unwrap_or(0);
+                            if n == 0 {
+                                println!("{}", "Usage: /tasks dismiss <num>".dimmed());
+                            } else if let Ok(tasks) = crate::comment_protocol::CommentProtocol::scan_workspace() {
+                                if let Some(task) = tasks.get(n - 1) {
+                                    if let Err(e) = crate::comment_protocol::CommentProtocol::dismiss(task) {
+                                        nv::print_error(&e.to_string());
+                                    } else {
+                                        println!("  {} Dismissed task #{} in {}", "[OK]".green(), n, task.file);
+                                    }
+                                }
+                            }
+                        }
+                        _ => println!("{}", "Usage: /tasks [list|execute <n>|dismiss <n>]".dimmed()),
+                    }
+                }
+
+                "/approval" => {
+                    let sub = parts.get(1).map(|s| s.trim()).unwrap_or("show");
+                    match sub {
+                        "show" | "" | "list" => crate::approval::print_matrix(),
+                        "speed" => {
+                            let mode = parts.get(2).map(|s| s.trim()).unwrap_or("");
+                            match mode {
+                                "fast" => crate::approval::set_speed_fast(),
+                                "safe" => crate::approval::set_speed_safe(),
+                                _ => println!("{}", "Usage: /approval speed [fast|safe]".dimmed()),
+                            }
+                        }
+                        _ => println!("{}", "Usage: /approval [show|speed fast|speed safe]".dimmed()),
+                    }
+                }
+
+                "/plan" => {
+                    let sub = parts.get(1).map(|s| s.trim()).unwrap_or("view");
+                    match sub {
+                        "view" | "show" | "" => crate::plan_visualizer::view(),
+                        "risk" => crate::plan_visualizer::risk_report(),
+                        _ => println!("{}", "Usage: /plan [view|risk]".dimmed()),
+                    }
+                }
+
+                "/infra" => {
+                    let sub = parts.get(1).map(|s| s.trim()).unwrap_or("scan");
+                    match sub {
+                        "scan" | "" => crate::infra::scan_workspace(),
+                        "security" => crate::infra::security_scan(),
+                        "optimize" => crate::infra::optimize_report(),
+                        _ => println!("{}", "Usage: /infra [scan|security|optimize]".dimmed()),
+                    }
+                }
+
+                "/fetch" => {
+                    let url = parts.get(1).map(|s| s.trim()).unwrap_or("");
+                    if url.is_empty() {
+                        println!("{}", "Usage: /fetch <url>".dimmed());
+                    } else {
+                        match crate::browser::fetch_markdown(url).await {
+                            Ok(md) => {
+                                let preview: String = md.chars().take(2000).collect();
+                                println!("{}\n{}", preview, if md.len() > 2000 { "  …(truncated, full content cached)".dimmed().to_string() } else { String::new() });
+                            }
+                            Err(e) => nv::print_error(&e.to_string()),
+                        }
+                    }
+                }
+
+                "/fingerprint" => {
+                    crate::fingerprint::run_fingerprint();
+                }
+
+                "/docs" => {
+                    let cmd = parts.get(1).map(|s| s.trim()).unwrap_or("");
+                    if cmd == "sync" || cmd == "architecture" {
+                        let active_cfg = active_config(config, &current_model, grounding, thinking, thinking_budget, auto_apply);
+                        match BackendClient::new(&active_cfg) {
+                            Ok(c) => {
+                                let docs = crate::living_docs::LivingDocs::new(std::sync::Arc::new(c), active_cfg);
+                                if let Err(e) = docs.sync_docs().await {
+                                    nv::print_error(&format!("Living Docs failed: {}", e));
+                                }
+                            }
+                            Err(e) => nv::print_error(&e.to_string()),
+                        }
+                    } else {
+                        println!("{}", "Usage: /docs sync  (auto-sync ARCHITECTURE.md)".dimmed());
                     }
                 }
 
@@ -715,7 +860,7 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                                 println!("  Profile '{}' not found in config.", name.red());
                             }
                         }
-                        _ => println!("Usage: /profile <name>  (configured in ~/.forge/config.toml [profiles] section)"),
+                        _ => println!("Usage: /profile <name>  (configured in ~/.dipralix/config.toml [profiles] section)"),
                     }
                 }
 
@@ -778,7 +923,7 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                     } else {
                         let now = chrono::Local::now();
                         let entry = format!("- [{}] {}", now.format("%Y-%m-%d"), fact);
-                        let path = std::path::Path::new(".forge/memory.md");
+                        let path = std::path::Path::new(".dipralix/memory.md");
                         let mut content = std::fs::read_to_string(path).unwrap_or_default();
                         if !content.is_empty() && !content.ends_with('\n') { content.push('\n'); }
                         content.push_str(&entry);
@@ -796,7 +941,7 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                     if keyword.is_empty() {
                         println!("{}", "Usage: /forget <keyword> — remove matching entries from memory".dimmed());
                     } else {
-                        let path = std::path::Path::new(".forge/memory.md");
+                        let path = std::path::Path::new(".dipralix/memory.md");
                         match std::fs::read_to_string(path) {
                             Ok(content) => {
                                 let filtered: Vec<&str> = content.lines()
@@ -822,7 +967,7 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                 }
 
                 "/memory" => {
-                    let path = std::path::Path::new(".forge/memory.md");
+                    let path = std::path::Path::new(".dipralix/memory.md");
                     match std::fs::read_to_string(path) {
                         Ok(content) if !content.trim().is_empty() => {
                             println!("\n{} Persistent Memory:", "[MEM]".magenta());
@@ -1201,7 +1346,7 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                 }
 
                 "/save" => {
-                    let filename = parts.get(1).map(|s| s.trim()).unwrap_or("forge-session.md");
+                    let filename = parts.get(1).map(|s| s.trim()).unwrap_or("dipralix-session.md");
                     match save_session(filename, &history) {
                         Ok(_)  => println!("{} '{}'", "Saved session to".green(), filename),
                         Err(e) => nv::print_error(&format!("Save failed: {}", e)),
@@ -1624,11 +1769,43 @@ async fn agentic_loop(
             );
         }
 
-        let solo_bash = function_calls.len() == 1 && function_calls[0].name == "bash";
+        let mut approved_calls = Vec::new();
+        let mut response_parts: Vec<Part> = Vec::new();
+
+        // Phase 2A: Peer Review for high-risk bash commands
+        for fc in &function_calls {
+            if fc.name == "bash" {
+                if let Some(cmd) = fc.args.get("command").and_then(|v| v.as_str()) {
+                    let risk = safety::classify(cmd);
+                    if risk == safety::RiskLevel::Confirm || risk == safety::RiskLevel::Deny {
+                        let engine = crate::debate::PeerReviewEngine::new(std::sync::Arc::new(client.clone()), config.clone());
+                        // Assemble context: last 3 turns
+                        let ctx_str = history.iter().rev().take(3).map(|c| c.role.clone()).collect::<Vec<_>>().join("\n");
+                        if let Ok(decision) = engine.review_action(cmd, risk, &ctx_str).await {
+                            if decision.contains("REJECT") {
+                                nv::print_warning(&format!("Peer Review REJECTED: {}", cmd));
+                                // We inject a fake response and skip execution
+                                response_parts.push(Part::FunctionResponse {
+                                    function_response: FunctionResponse {
+                                        name: fc.name.clone(),
+                                        response: serde_json::json!({ "error": format!("Peer Review rejected this action: {}", decision) }),
+                                        id: None,
+                                    },
+                                });
+                                continue;
+                            }
+                        }
+                    }
+                }
+            }
+            approved_calls.push(fc.clone());
+        }
+
+        let solo_bash = approved_calls.len() == 1 && approved_calls[0].name == "bash";
         let auto_ap   = config.auto_apply;
 
-        let handles: Vec<_> = function_calls
-            .iter()
+        let handles: Vec<_> = approved_calls
+            .into_iter()
             .map(|fc| {
                 let name   = fc.name.clone();
                 let args   = fc.args.clone();
@@ -1642,8 +1819,6 @@ async fn agentic_loop(
                 })
             })
             .collect();
-
-        let mut response_parts: Vec<Part> = Vec::new();
 
         for handle in handles {
             let (name, args, result) = handle.await?;
@@ -1729,8 +1904,8 @@ async fn auto_pr(description: &str) {
     }
 
     let body = format!(
-        "## Summary\n\nAuto-generated by FORGE 1.0.\n\n{}\n\n\
-         > Created with [FORGE](https://github.com/forge/forge)",
+        "## Summary\n\nAuto-generated by DIPRALIX 1.0.\n\n{}\n\n\
+         > Created with [DIPRALIX](https://github.com/dipralix/dipralix)",
         description
     );
 
@@ -1797,9 +1972,9 @@ async fn compact_history(config: &Config, history: &[Content]) -> Result<String>
 // ── /save ─────────────────────────────────────────────────────────────────────
 
 fn save_session(filename: &str, history: &[Content]) -> Result<()> {
-    let mut out = String::from("# FORGE Session\n\n");
+    let mut out = String::from("# DIPRALIX Session\n\n");
     for msg in history {
-        out.push_str(if msg.role == "user" { "## You\n" } else { "## FORGE\n" });
+        out.push_str(if msg.role == "user" { "## You\n" } else { "## DIPRALIX\n" });
         for part in &msg.parts {
             match part {
                 Part::Text { text, .. } => { out.push_str(text); out.push('\n'); }

@@ -1,4 +1,4 @@
-// Project context packer — creates a portable .forge-pack file with everything
+// Project context packer — creates a portable .dipralix-pack file with everything
 // an AI model needs to understand a project in one shot.
 use anyhow::Result;
 use std::fs;
@@ -6,7 +6,7 @@ use std::path::Path;
 use std::process::Command;
 
 pub fn pack_project(output: Option<&str>) -> Result<String> {
-    let out_path = output.unwrap_or(".forge-pack");
+    let out_path = output.unwrap_or(".dipralix-pack");
     let mut buf = String::new();
 
     // Header

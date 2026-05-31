@@ -1,12 +1,12 @@
 [package]
-name = "forge"
-version = "0.0.2"
+name = "dipralix"
+version = "0.1.0"
 edition = "2021"
-description = "Multi-model terminal AI coding agent — forge code with any model"
+description = "Multi-model terminal AI coding agent — dipralix code with any model"
 authors = ["pratikacharya1234"]
 
 [[bin]]
-name = "forge-cli"
+name = "dipralix-cli"
 path = "src/main.rs"
 
 [features]
@@ -34,3 +34,5 @@ uuid         = { version = "1", features = ["v4"] }
 chrono = "0.4.38"
 cpal = { version = "0.15", optional = true }
 hound = { version = "3.5", optional = true }
+tree-sitter = "0.20"
+tree-sitter-rust = "0.20"

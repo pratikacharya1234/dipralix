@@ -44,6 +44,7 @@ pub fn detect_provider(model: &str) -> Provider {
 
 // ── BackendClient ─────────────────────────────────────────────────────────────
 
+#[derive(Clone)]
 pub enum BackendClient {
     Gemini(GeminiBackend),
     Anthropic(AnthropicBackend),
@@ -134,6 +135,7 @@ impl BackendClient {
 
 // ── Gemini backend ────────────────────────────────────────────────────────────
 
+#[derive(Clone)]
 pub struct GeminiBackend {
     http: reqwest::Client,
     pub model: String,
@@ -267,6 +269,7 @@ impl GeminiBackend {
 
 // ── Anthropic (Claude) backend ────────────────────────────────────────────────
 
+#[derive(Clone)]
 pub struct AnthropicBackend {
     http: reqwest::Client,
     pub model: String,
@@ -827,6 +830,7 @@ impl AnthropicBackend {
 
 // ── OpenAI (GPT) backend ──────────────────────────────────────────────────────
 
+#[derive(Clone)]
 pub struct OpenAIBackend {
     http: reqwest::Client,
     pub model: String,
@@ -1248,6 +1252,7 @@ impl OpenAIBackend {
 
 // ── Ollama backend (localhost:11434 OpenAI-compatible API) ────────────────────
 
+#[derive(Clone)]
 pub struct OllamaBackend {
     http: reqwest::Client,
     pub model: String,

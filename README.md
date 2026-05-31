@@ -1,4 +1,4 @@
-# FORGE ◈ NULLVOID
+# DIPRALIX ◈ NULLVOID
 
 <p align="center">
   <img src="https://img.shields.io/badge/price-FREE-green.svg" alt="100% Free">
@@ -11,20 +11,20 @@
 </p>
 
 <p align="center">
-  <img src="assets/demo-banner.png" alt="FORGE NULLVOID Terminal" width="90%">
+  <img src="assets/demo-banner.png" alt="DIPRALIX NULLVOID Terminal" width="90%">
 </p>
 
 <p align="center">
-  <img src="assets/demo-chat.png" alt="FORGE Domain Bootstrap &amp; Chat" width="90%">
+  <img src="assets/demo-chat.png" alt="DIPRALIX Domain Bootstrap &amp; Chat" width="90%">
 </p>
 
 ---
 
-**FORGE** is the open-source, multi-model terminal AI coding agent. 1M token context. Built in Rust. Works with Gemini, Claude, and GPT — routing each task to the best model automatically. Free. No subscriptions. No lock-in.
+**DIPRALIX** is the open-source, multi-model terminal AI coding agent. 1M token context. Built in Rust. Works with Gemini, Claude, and GPT — routing each task to the best model automatically. Free. No subscriptions. No lock-in.
 
-### What Makes FORGE Different
+### What Makes DIPRALIX Different
 
-FORGE is the **only** coding agent that:
+DIPRALIX is the **only** coding agent that:
 - **Has NULLVOID** — spectral terminal theme, zero emoji, pure Unicode geometric glyphs
 - **Domain bootstrap** — pre-loads tech stack, architecture, security patterns before you code
 - **Gets smarter every session** — ALICE learns from errors and auto-injects lessons
@@ -37,7 +37,7 @@ FORGE is the **only** coding agent that:
 
 ### Comparison
 
-| | FORGE | Claude Code | Cursor | Copilot |
+| | DIPRALIX | Claude Code | Cursor | Copilot |
 |---|---|---|---|---|
 | **Price** | Free | $20-200/mo | $20/mo | $10/mo |
 | **Open source** | MIT | Proprietary | Proprietary | Proprietary |
@@ -59,7 +59,7 @@ FORGE is the **only** coding agent that:
 
 ## 💯 100% Free — No Credit Card, No Subscription
 
-FORGE works with **Gemini's free tier**. That means:
+DIPRALIX works with **Gemini's free tier**. That means:
 
 - ✅ **0 dollars.** Forever. No trial that expires.
 - ✅ **1,500 requests per day** on Gemini Flash — more than enough for heavy coding sessions
@@ -74,52 +74,52 @@ FORGE works with **Gemini's free tier**. That means:
 
 ```bash
 export GEMINI_API_KEY="your-free-key-here"
-forge-cli
+dipralix-cli
 # That's it. You're coding with AI. For free.
 ```
 
-> **Why this matters:** Claude Code costs $20-200/month plus per-token usage. Users report spending $25 in a single session. Cursor costs $20/month. Copilot costs $10/month. FORGE costs nothing. Use the free Gemini tier for 90% of your work, add Claude only when you need it, switch back anytime. No lock-in. No subscription to cancel.
+> **Why this matters:** Claude Code costs $20-200/month plus per-token usage. Users report spending $25 in a single session. Cursor costs $20/month. Copilot costs $10/month. DIPRALIX costs nothing. Use the free Gemini tier for 90% of your work, add Claude only when you need it, switch back anytime. No lock-in. No subscription to cancel.
 
 ## Quick Start
 
 ```bash
 # One-liner install
-curl -fsSL https://raw.githubusercontent.com/pratikacharya1234/forge/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/pratikacharya1234/dipralix/main/install.sh | bash
 
 # Or clone and build
-git clone https://github.com/pratikacharya1234/forge.git
-cd forge
+git clone https://github.com/pratikacharya1234/dipralix.git
+cd dipralix
 cargo build --release
 
 # Get a free API key (30 seconds, no credit card)
 # → https://aistudio.google.com/apikey
 
 export GEMINI_API_KEY="your-free-key"
-forge-cli
+dipralix-cli
 ```
 
 ## Usage
 
 ```bash
 # Interactive session
-forge-cli
+dipralix-cli
 
 # Full task pipeline — research, decompose, dispatch, verify
-forge-cli --prompt "/task add rate limiting to the API endpoints"
+dipralix-cli --prompt "/task add rate limiting to the API endpoints"
 
 # With specific models
-forge-cli --model claude-4-sonnet --anthropic-api-key "sk-ant-..."
-forge-cli --model gpt-4.1 --openai-api-key "sk-..."
-forge-cli --model auto     # auto-select best model per task
+dipralix-cli --model claude-4-sonnet --anthropic-api-key "sk-ant-..."
+dipralix-cli --model gpt-4.1 --openai-api-key "sk-..."
+dipralix-cli --model auto     # auto-select best model per task
 
 # With thinking mode and web grounding
-forge-cli --think --grounding --model gemini-2.5-pro
+dipralix-cli --think --grounding --model gemini-2.5-pro
 
 # Single prompt, auto-apply, exit
-forge-cli --auto-apply --prompt "fix all compiler warnings"
+dipralix-cli --auto-apply --prompt "fix all compiler warnings"
 
 # Test-fix loop
-forge-cli --prompt "/test-fix 'cargo test' 5"
+dipralix-cli --prompt "/test-fix 'cargo test' 5"
 ```
 
 ## Key Commands
@@ -164,7 +164,7 @@ Full list: `/help`
 
 ## Configuration
 
-`~/.forge/config.toml`:
+`~/.dipralix/config.toml`:
 
 ```toml
 api_key = "AIza..."
@@ -193,7 +193,7 @@ grounding = true
 daily_budget_usd = 10.0
 ```
 
-Per-project: `.forge/project.md` (instructions), `.forge/safety.toml` (permissions), `.forge/memory.md` (persistent facts).
+Per-project: `.dipralix/project.md` (instructions), `.dipralix/safety.toml` (permissions), `.dipralix/memory.md` (persistent facts).
 
 ## Architecture
 
@@ -242,7 +242,7 @@ Gemini 2.5 Pro/Flash/Lite, Claude 4 Opus/Sonnet, GPT-4.1/GPT-4o/o3/o4-mini. Auto
 GitHub (12), Discord (7), Google Drive (7), Gmail (7). OAuth2 with auto-refresh.
 
 ### Safety System
-4-level classification: Allow, Warn, Confirm, Deny. Pipe-to-shell detection. Per-project `.forge/safety.toml`. Trusted/blocked command lists.
+4-level classification: Allow, Warn, Confirm, Deny. Pipe-to-shell detection. Per-project `.dipralix/safety.toml`. Trusted/blocked command lists.
 
 ### MCP Support
 Full JSON-RPC 2.0 MCP client over stdio. Protocol 2025-03-26 compliance. Auto-discovers tools. Parallel server startup with timeout safety.
@@ -263,4 +263,6 @@ MIT — see [LICENSE](LICENSE).
 
 <p align="center">
   <b>Built with Rust. Open source. Free forever.</b>
+</p>
+ource. Free forever.</b>
 </p>

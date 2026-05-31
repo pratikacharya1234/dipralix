@@ -67,15 +67,18 @@ pub async fn execute_tool(name: &str, args: &Value, ctx: &ToolContext) -> ToolRe
         "append_file"      => tool_append_file(args),
         "bash"             => tool_bash(args, ctx).await,
         "list_files"       => tool_list_files(args),
+        "list_symbols"     => tool_list_symbols(args),
         "search_files"     => tool_search_files(args),
         "glob"             => tool_glob(args),
         "create_directory" => tool_create_directory(args),
         "delete_file"      => tool_delete_file(args).await,
         "move_file"        => tool_move_file(args),
         "copy_file"        => tool_copy_file(args),
-        "url_fetch"        => tool_url_fetch(args).await,
-        "git_snapshot"     => tool_git_snapshot(args).await,
-        other              => ToolResult::err(format!("Unknown tool: {other}")),
+        "url_fetch"         => tool_url_fetch(args).await,
+        "git_snapshot"      => tool_git_snapshot(args).await,
+        "memorize_decision" => tool_memorize_decision(args).await,
+        "memorize_pattern"  => tool_memorize_pattern(args).await,
+        other               => ToolResult::err(format!("Unknown tool: {other}")),
     }
 }
 
@@ -423,6 +426,36 @@ fn tool_list_files(args: &Value) -> ToolResult {
     }
 }
 
+// ── list_symbols ───────────────────────────────────────────────────────────────
+
+fn tool_list_symbols(args: &Value) -> ToolResult {
+    let path = match args.get("path").and_then(Value::as_str) {
+        Some(p) => p,
+        None => return ToolResult::err("Missing required argument: path"),
+    };
+
+    let content = match std::fs::read_to_string(path) {
+        Ok(c) => c,
+        Err(e) => return ToolResult::err(format!("Cannot read '{}': {}", path, e)),
+    };
+
+    // Use our new ast module
+    match crate::ast::extract_symbols(&content) {
+        Ok(symbols) => {
+            if symbols.is_empty() {
+                ToolResult::ok(format!("No symbols found in '{}'", path))
+            } else {
+                let mut output = Vec::new();
+                for s in symbols {
+                    output.push(format!("{:<15} {:<30} L{}-L{}", s.kind, s.name, s.start_line, s.end_line));
+                }
+                ToolResult::ok(output.join("\n"))
+            }
+        }
+        Err(e) => ToolResult::err(format!("Failed to extract symbols: {}", e)),
+    }
+}
+
 // ── search_files ───────────────────────────────────────────────────────────────
 
 fn tool_search_files(args: &Value) -> ToolResult {
@@ -633,7 +666,7 @@ async fn tool_url_fetch(args: &Value) -> ToolResult {
 
     let client = match reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
-        .user_agent("Mozilla/5.0 (compatible; forge/1.0)")
+        .user_agent("Mozilla/5.0 (compatible; dipralix/1.0)")
         .build()
     {
         Ok(c)  => c,
@@ -693,7 +726,7 @@ fn strip_html(html: &str) -> String {
 // ── git_snapshot ───────────────────────────────────────────────────────────────
 
 async fn tool_git_snapshot(args: &Value) -> ToolResult {
-    let name = args.get("name").and_then(Value::as_str).unwrap_or("forge-auto");
+    let name = args.get("name").and_then(Value::as_str).unwrap_or("dipralix-auto");
 
     let out = tokio::process::Command::new("git")
         .args(["stash", "push", "-m", name, "--include-untracked"])
@@ -710,6 +743,40 @@ async fn tool_git_snapshot(args: &Value) -> ToolResult {
             ToolResult::err(format!("git stash failed: {}", err))
         }
         Err(e) => ToolResult::err(format!("git not available: {}", e)),
+    }
+}
+
+// ── memorize_decision ──────────────────────────────────────────────────────────
+
+async fn tool_memorize_decision(args: &Value) -> ToolResult {
+    let decision = match args.get("decision").and_then(Value::as_str) {
+        Some(d) => d,
+        None => return ToolResult::err("Missing 'decision' argument"),
+    };
+
+    let memory = crate::memory::MemoryCore::new();
+    match memory.record_decision(decision) {
+        Ok(_) => ToolResult::ok(format!("Memorized project decision: {}", decision)),
+        Err(e) => ToolResult::err(format!("Failed to memorize decision: {}", e)),
+    }
+}
+
+// ── memorize_pattern ───────────────────────────────────────────────────────────
+
+async fn tool_memorize_pattern(args: &Value) -> ToolResult {
+    let name = match args.get("name").and_then(Value::as_str) {
+        Some(n) => n,
+        None => return ToolResult::err("Missing 'name' argument"),
+    };
+    let content = match args.get("content").and_then(Value::as_str) {
+        Some(c) => c,
+        None => return ToolResult::err("Missing 'content' argument"),
+    };
+
+    let memory = crate::memory::MemoryCore::new();
+    match memory.record_pattern(name, content) {
+        Ok(_) => ToolResult::ok(format!("Memorized global pattern: {}", name)),
+        Err(e) => ToolResult::err(format!("Failed to memorize pattern: {}", e)),
     }
 }
 
@@ -793,6 +860,17 @@ pub fn get_tool_declarations() -> Vec<FunctionDeclaration> {
                     "path":      { "type": "STRING",  "description": "Directory (default .)" },
                     "recursive": { "type": "BOOLEAN", "description": "Recurse (default false)" }
                 }
+            }),
+        },
+        FunctionDeclaration {
+            name: "list_symbols".to_string(),
+            description: "Extract high-level symbols (functions, structs, enums) from a file using tree-sitter.".to_string(),
+            parameters: json!({
+                "type": "OBJECT",
+                "properties": {
+                    "path": { "type": "STRING", "description": "File path" }
+                },
+                "required": ["path"]
             }),
         },
         FunctionDeclaration {
@@ -883,8 +961,31 @@ pub fn get_tool_declarations() -> Vec<FunctionDeclaration> {
             parameters: json!({
                 "type": "OBJECT",
                 "properties": {
-                    "name": { "type": "STRING", "description": "Snapshot label (default: forge-auto)" }
+                    "name": { "type": "STRING", "description": "Snapshot label (default: dipralix-auto)" }
                 }
+            }),
+        },
+        FunctionDeclaration {
+            name: "memorize_decision".to_string(),
+            description: "Record an architectural decision or important project fact to persistent project memory.".to_string(),
+            parameters: json!({
+                "type": "OBJECT",
+                "properties": {
+                    "decision": { "type": "STRING", "description": "The decision or fact to record" }
+                },
+                "required": ["decision"]
+            }),
+        },
+        FunctionDeclaration {
+            name: "memorize_pattern".to_string(),
+            description: "Record a learned coding pattern or convention to global memory across projects.".to_string(),
+            parameters: json!({
+                "type": "OBJECT",
+                "properties": {
+                    "name":    { "type": "STRING", "description": "Short unique name for the pattern (e.g. 'rust_error_handling')" },
+                    "content": { "type": "STRING", "description": "The pattern description in Markdown" }
+                },
+                "required": ["name", "content"]
             }),
         },
     ]

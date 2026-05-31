@@ -1,56 +1,50 @@
 #!/usr/bin/env bash
-# FORGE Demo — shows what FORGE can do in under 2 minutes
-# Prerequisites: forge-cli installed, GEMINI_API_KEY set
+# DIPRALIX Demo — shows what DIPRALIX can do in under 2 minutes
+# Prerequisites: dipralix-cli installed, GEMINI_API_KEY set
 set -euo pipefail
 
 echo ""
 echo "  ╔══════════════════════════════════════════════════╗"
-echo "  ║        ◈ FORGE v0.0.2 — Live Demo              ║"
+echo "  ║        ◈ DIPRALIX v0.0.2 — Live Demo             ║"
 echo "  ╚══════════════════════════════════════════════════╝"
 echo ""
 
 # Check prerequisites
-if ! command -v forge-cli &>/dev/null; then
-    echo "  [!] forge-cli not found. Install it first:"
-    echo "      curl -fsSL https://raw.githubusercontent.com/pratikacharya1234/forge/main/install.sh | bash"
+if ! command -v dipralix-cli &>/dev/null; then
+    echo "  [!] dipralix-cli not found. Install it first:"
+    echo "      curl -fsSL https://raw.githubusercontent.com/pratikacharya1234/dipralix/main/install.sh | bash"
     exit 1
 fi
 
-if [ -z "${GEMINI_API_KEY:-}" ] && [ -z "${FORGE_API_KEY:-}" ]; then
+if [ -z "${GEMINI_API_KEY:-}" ] && [ -z "${DIPRALIX_API_KEY:-}" ]; then
     echo "  [!] No API key set. Get a free one at https://aistudio.google.com/apikey"
     echo "      Then: export GEMINI_API_KEY='your-key'"
     exit 1
 fi
 
-FORGE_VERSION=$(forge-cli --version 2>&1 | head -1)
-echo "  [⊕] FORGE ${FORGE_VERSION} ready"
+DIPRALIX_VERSION=$(dipralix-cli --version 2>&1 | head -1)
+echo "  [⊕] DIPRALIX ${DIPRALIX_VERSION} ready"
 echo "  [⊕] API key configured"
 echo ""
 echo "  ─────────────────────────────────────────────────"
 echo "  Demo 1: Quick code fix"
 echo "  ─────────────────────────────────────────────────"
-echo ""
 
-# Create a temp directory for the demo
-DEMO_DIR=$(mktemp -d)
-cd "$DEMO_DIR"
+# Create a dummy project
+mkdir -p demo_tmp
+cd demo_tmp
 
-echo 'fn greet(name: &str) -> String {
-    format!("hello {}!", name)
-}
-
-fn main() {
-    println!("{}", greet("world"));
-}' > main.rs
+echo 'fn main() { println!("Hello, world!"); }
+fn greet(name: &str) -> String { format!("Hello, {}!", name) }' > main.rs
 
 echo "  [+] Created main.rs with a basic Rust program"
 echo ""
 
-echo "  Running: forge-cli --auto-apply --prompt 'add a test for the greet function and fix any issues'"
+echo "  Running: dipralix-cli --auto-apply --prompt 'add a test for the greet function and fix any issues'"
 echo ""
 
-# Run FORGE in auto-apply mode
-forge-cli --auto-apply --prompt "add a test for the greet function in main.rs and make sure it compiles and passes" 2>&1 || true
+# Run DIPRALIX in auto-apply mode
+dipralix-cli --auto-apply --prompt "add a test for the greet function in main.rs and make sure it compiles and passes" 2>&1 || true
 
 echo ""
 echo "  ─────────────────────────────────────────────────"
@@ -58,18 +52,18 @@ echo "  Demo complete!"
 echo "  ─────────────────────────────────────────────────"
 echo ""
 echo "  What you just saw:"
-echo "  1. FORGE auto-detected the Rust project"
+echo "  1. DIPRALIX auto-detected the Rust project"
 echo "  2. Added a test module"
 echo "  3. Verified it compiles"
 echo "  4. All for FREE (Gemini free tier)"
 echo ""
 echo "  Try it yourself:"
 echo "    export GEMINI_API_KEY='your-free-key'"
-echo "    forge-cli"
+echo "    dipralix-cli"
 echo ""
-echo "  More: https://forgecli.vercel.app"
+echo "  More: https://github.com/pratikacharya1234/dipralix"
 echo ""
 
 # Cleanup
-cd /
-rm -rf "$DEMO_DIR"
+cd ..
+rm -rf demo_tmp

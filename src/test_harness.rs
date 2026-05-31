@@ -358,7 +358,10 @@ mod integration_count_tests {
     #[test]
     fn core_tool_count_is_correct() {
         let count = tools::core_tool_count();
-        assert_eq!(count, 14, "Expected 14 core tools (read, write, edit, append, bash, list, search, glob, mkdir, delete, move, copy, fetch, snapshot)");
+        // 15 file/exec tools (read, write, append, edit, bash, list_files, list_symbols,
+        // search, glob, mkdir, delete, move, copy, url_fetch, git_snapshot)
+        // + 2 memory tools (memorize_decision, memorize_pattern)
+        assert_eq!(count, 17, "Expected 17 core tools — update this test when adding/removing tools in tools.rs");
     }
 
     #[test]

@@ -1,10 +1,10 @@
 /// FORGE Auto-Learning System (ALICE)
 ///
-/// FORGE learns from its own mistakes across sessions.
+/// DIPRALIX learns from its own mistakes across sessions.
 /// When an error is detected during tool execution, the system:
 /// 1. Analyzes the error pattern
 /// 2. Extracts a learning
-/// 3. Saves to .forge/learnings.md
+/// 3. Saves to .dipralix/learnings.md
 /// 4. Auto-injects learnings into future system prompts
 ///
 /// Unlike /memorize (manual), this is automatic and self-improving.
@@ -163,9 +163,9 @@ impl ProjectDna {
     }
 }
 
-/// Load learnings from .forge/learnings.md
+/// Load learnings from .dipralix/learnings.md
 pub fn load_learnings() -> Vec<Learning> {
-    let path = Path::new(".forge/learnings.md");
+    let path = Path::new(".dipralix/learnings.md");
     if !path.exists() { return Vec::new(); }
 
     let content = match std::fs::read_to_string(path) {
@@ -211,7 +211,7 @@ fn parse_learnings(content: &str) -> Vec<Learning> {
 
 /// Record a new learning from a tool error
 pub fn record_learning(error_output: &str, tool_name: &str, success_after: bool) {
-    let path = Path::new(".forge/learnings.md");
+    let path = Path::new(".dipralix/learnings.md");
     let mut content = std::fs::read_to_string(path).unwrap_or_default();
 
     // Analyze the error to extract a learning

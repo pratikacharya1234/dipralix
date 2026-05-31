@@ -43,7 +43,7 @@ enum SerializedPart {
 fn sessions_dir() -> PathBuf {
     dirs::home_dir()
         .unwrap_or_else(|| PathBuf::from("."))
-        .join(".forge")
+        .join(".dipralix")
         .join("sessions")
 }
 
