@@ -16,11 +16,16 @@ const features = [
 ];
 ---
 
-<Layout title="Dipralix — multi-model terminal AI coding agent">
+<Layout
+	title="Dipralix — multi-model terminal AI coding agent"
+	description="Dipralix is a free, multi-model terminal AI coding agent built in Rust. Use Gemini for free, add Claude or GPT keys for harder tasks."
+	keywords="ai coding agent, terminal ai assistant, rust cli tool, free ai coding tool, multi model coding"
+	canonical="/"
+>
 	<!-- Hero ------------------------------------------------------------- -->
 	<section class="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
 		<div class="absolute inset-0 -z-10">
-			<div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(99,102,241,0.15),_transparent_50%)]"></div>
+			<div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(16,185,129,0.18),_transparent_50%)]"></div>
 			<div class="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
 		</div>
 
@@ -32,7 +37,7 @@ const features = [
 
 			<h1 class="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40 leading-[1.05]">
 				Code with every model.<br />
-				<span class="bg-gradient-to-r from-accent-primary to-purple-400 bg-clip-text text-transparent">Pay for none of them.</span>
+				<span class="bg-gradient-to-r from-accent-primary to-accent-secondary bg-clip-text text-transparent">Pay for none of them.</span>
 			</h1>
 
 			<p class="text-xl md:text-2xl text-white/60 max-w-2xl mx-auto mb-10 leading-relaxed">
@@ -70,7 +75,7 @@ const features = [
 	</section>
 
 	<!-- Why -------------------------------------------------------------- -->
-	<section class="py-24 border-t border-white/5">
+	<section id="features" class="py-24 border-t border-white/5">
 		<div class="container mx-auto px-6 max-w-5xl">
 			<div class="grid md:grid-cols-3 gap-12 text-center">
 				<div>
@@ -106,6 +111,26 @@ const features = [
 					</div>
 				))}
 			</div>
+		</div>
+	</section>
+
+	<!-- Deep dive -------------------------------------------------------- -->
+	<section class="py-24 border-t border-white/5">
+		<div class="container mx-auto px-6 max-w-4xl space-y-6">
+			<div class="text-xs uppercase tracking-widest text-accent-primary">Terminal-first clarity</div>
+			<h2 class="text-3xl md:text-4xl font-bold tracking-tighter">A terminal AI assistant that stays predictable.</h2>
+			<p class="text-white/60 leading-relaxed">
+				Dipralix is an ai coding agent built for the terminal, not for a proprietary UI. That matters because the terminal is already where the tools are. Your git status, your build output, your migrations, your logs, your ssh sessions all live there. A terminal ai assistant does not need a new surface area, it needs to behave like a good teammate: read what is in the repo, plan the steps, write the smallest safe changes, and show the diff. This is the rhythm Dipralix is built around. You can use it as a free ai coding tool to power through repetitive refactors, or as a cautious reviewer that drafts code while you stay in control of execution.
+			</p>
+			<p class="text-white/60 leading-relaxed">
+				The multi model approach is also about predictability. There is no single model that is best at everything. Gemini is fast and free at scale, Claude is strong at reasoning and long context, GPT excels at certain coding patterns and tool use. Dipralix routes across these providers so that you can pick the right tool for the job without switching apps. That does not mean black box routing either. The model choice is explicit, and you can pin a model per task if you want. The result is a terminal ai assistant that respects your constraints and keeps costs visible.
+			</p>
+			<p class="text-white/60 leading-relaxed">
+				Rust is not just a performance choice, it is a distribution choice. Shipping a single 12 MB binary means you can run Dipralix on a server, in a container, or on a Raspberry Pi without dragging in Node or Python. The cold start is fast, which matters for scripting and CI. The small footprint also means fewer dependencies that can go out of date. For a free ai coding tool, portability matters more than glossy UI. When you can move the same binary between environments, you can trust that the agent behavior stays the same whether you are on your laptop or a remote box.
+			</p>
+			<p class="text-white/60 leading-relaxed">
+				The safety system is designed for real-world usage, not a demo. An ai coding agent that can run shell commands must earn trust. Dipralix uses a four level approval matrix, optional peer review debate, and a clear audit trail. That means you decide which actions run automatically and which are blocked. If you want speed, you can dial it up; if you want safety, you can lock it down. The goal is to make a terminal ai assistant that scales from solo hacking to team workflows without getting in the way. It is opinionated about safety, but still flexible enough to fit your daily routine.
+			</p>
 		</div>
 	</section>
 

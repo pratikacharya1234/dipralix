@@ -1,16 +1,20 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #050510;
-  --color-surface: #0a0a1a;
-  --color-card: rgba(15, 36, 68, 0.4);
-  --color-accent-primary: #6366f1;
-  --color-accent-secondary: #22d3ee;
+  --color-background: #0a0a0f;
+  --color-surface: #12121a;
+  --color-card: #12121a;
+  --color-accent-primary: #10b981;
+  --color-accent-secondary: #3b82f6;
+  --color-warning: #f59e0b;
   --color-gemini: #4ade80;
   --color-claude: #a855f7;
   --color-gpt: #f97316;
   --color-danger: #ef4444;
-  --color-code-bg: #0c0f1a;
+  --color-code-bg: #0d0d12;
+  --color-text-primary: #f0f0f5;
+  --color-text-secondary: #8a8a9a;
+  --color-code-text: #10b981;
 
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -29,11 +33,11 @@
 
 @layer components {
   .glass {
-    @apply bg-card backdrop-blur-md border border-white/15;
+    @apply bg-surface border border-white/10;
   }
 
   .btn-primary {
-    @apply px-6 py-3 bg-accent-primary hover:bg-accent-primary/90 text-white rounded-lg font-medium transition-all;
+    @apply px-6 py-3 bg-accent-primary hover:bg-accent-primary/90 text-background rounded-lg font-medium transition-all;
   }
 
   .winner-glow {
@@ -46,6 +50,42 @@
     50% { box-shadow: 0 0 60px rgba(74, 222, 128, 0.4); }
     100% { box-shadow: 0 0 30px rgba(74, 222, 128, 0.2); }
   }
+}
+
+.code-block {
+  @apply bg-[color:var(--color-code-bg)] text-[color:var(--color-code-text)] rounded-[4px] border border-white/10 overflow-hidden;
+}
+
+.code-block pre {
+  @apply font-mono text-sm leading-relaxed p-4 overflow-x-auto;
+}
+
+.code-header {
+  @apply flex items-center justify-between px-4 py-2 bg-black/40 border-b border-white/10 text-xs text-white/60;
+}
+
+.code-copy {
+  @apply text-xs px-2 py-1 rounded bg-white/5 hover:bg-white/10 transition-colors text-white/80;
+}
+
+.faq-item {
+  @apply border border-white/10 rounded-lg bg-surface;
+}
+
+.faq-item summary {
+  @apply cursor-pointer list-none px-4 py-3 flex items-center justify-between text-white/90;
+}
+
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-item .faq-body {
+  @apply px-4 pb-4 text-white/60;
+}
+
+.ad-slot {
+  @apply bg-black/30 border border-white/10 rounded-xl flex items-center justify-center min-h-[250px];
 }
 
 /* Animations */
