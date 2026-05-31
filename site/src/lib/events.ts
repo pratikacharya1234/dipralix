@@ -1,7 +1,7 @@
 import { writable } from 'svelte/store';
 
-export const forgeEvents = writable([]);
+export const dipralixEvents = writable([]);
 
-export function emitForgeEvent(type, data = {}) {
-  forgeEvents.update(events => [...events, { type, data, timestamp: Date.now() }]);
+export function emitDipralixEvent(type, data = {}) {
+  dipralixEvents.update(events => [...events, { type, data, timestamp: Date.now() }]);
 }

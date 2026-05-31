@@ -1,5 +1,7 @@
 /target
 /dist
+site/dist/
+site/.astro/
 /.env
 node_modules/
 /.dipralix-pack

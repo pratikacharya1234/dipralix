@@ -3,7 +3,7 @@
   import { OrbitControls, Float } from '@threlte/extras';
   import * as THREE from 'three';
 
-  import { forgeEvents } from '../../lib/events';
+  import { dipralixEvents } from '../../lib/events';
 
   let nodeCount = 100;
   let nodes = [];
@@ -38,7 +38,7 @@
 
   generateGraph();
 
-  forgeEvents.subscribe(events => {
+  dipralixEvents.subscribe(events => {
     if (events.length === 0) return;
     const lastEvent = events[events.length - 1];
     if (lastEvent.type === 'scan') {

@@ -1,15 +1,15 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import ForgeCanvas from '../components/3d/ForgeCanvas.svelte';
+import DipralixCanvas from '../components/3d/DipralixCanvas.svelte';
 import Terminal from '../components/ui/Terminal.svelte';
 import Analytics from '../components/ui/Analytics.svelte';
 ---
 
-<Layout title="FORGE - The Multi-Model AI Coding Agent">
+<Layout title="DIPRALIX - The Multi-Model AI Coding Agent">
 	<section class="relative h-screen w-full flex items-center justify-center overflow-hidden">
 		<!-- 3D Background -->
 		<div class="absolute inset-0 z-0">
-			<ForgeCanvas client:load />
+			<DipralixCanvas client:load />
 		</div>
 
 		<!-- Hero Content -->
@@ -23,7 +23,7 @@ import Analytics from '../components/ui/Analytics.svelte';
 
 			<div class="flex flex-col md:flex-row items-center justify-center gap-4">
 				<a href="/docs" class="btn-primary text-lg px-8 py-4 w-full md:w-auto">
-					Install Forge
+					Install Dipralix
 				</a>
 				<a href="/arena" class="px-8 py-4 glass rounded-lg font-medium hover:bg-white/5 transition-all w-full md:w-auto">
 					Watch the Arena
@@ -48,7 +48,7 @@ import Analytics from '../components/ui/Analytics.svelte';
 						<svg class="w-6 h-6 text-accent-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
 					</div>
 					<h3 class="text-xl font-bold mb-4">Multi-Model Orchestration</h3>
-					<p class="text-white/60">Forge doesn't just use one model. It picks the best tool for the job, running tasks in parallel across Gemini, Claude, and GPT.</p>
+					<p class="text-white/60">Dipralix doesn't just use one model. It picks the best tool for the job, running tasks in parallel across Gemini, Claude, and GPT.</p>
 				</div>
 				<div class="fade-in">
 					<div class="w-12 h-12 bg-accent-secondary/20 rounded-lg flex items-center justify-center mb-6">
@@ -62,7 +62,7 @@ import Analytics from '../components/ui/Analytics.svelte';
 						<svg class="w-6 h-6 text-gemini" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
 					</div>
 					<h3 class="text-xl font-bold mb-4">Terminal Native</h3>
-					<p class="text-white/60">No bloated IDE plugins. Forge lives in your terminal, where you already work. Fast, lightweight, relentless.</p>
+					<p class="text-white/60">No bloated IDE plugins. Dipralix lives in your terminal, where you already work. Fast, lightweight, relentless.</p>
 				</div>
 			</div>
 		</div>

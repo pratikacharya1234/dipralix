@@ -2,7 +2,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/price-FREE-green.svg" alt="100% Free">
-  <img src="https://img.shields.io/badge/version-0.0.2-blue.svg" alt="Version 0.0.2">
+  <img src="https://img.shields.io/badge/version-0.1.0-blue.svg" alt="Version 0.1.0">
   <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License">
   <img src="https://img.shields.io/badge/rust-1.75%2B-orange.svg" alt="Rust 1.75+">
   <img src="https://img.shields.io/badge/context-1M%20tokens-green.svg" alt="1M Token Context">
@@ -55,7 +55,29 @@ DIPRALIX is the **only** coding agent that:
 | **Terminal theme** | **NULLVOID** spectral | None | VS Code | VS Code |
 | **Free tier** | ✅ Gemini 1,500 req/day | ❌ | ❌ | ❌ |
 
-> **EMBER Voice AI** is under active development — real-time voice coding with TTS responses. Shipping in v0.0.3.
+> **EMBER Voice AI** is under active development — real-time voice coding with TTS responses. Shipping in a future release.
+
+## What's New in v0.1.0
+
+Ten native features that other agents pile on through plugins and external services — built into one 12 MB Rust binary.
+
+### Core Intelligence
+- **Memory Core** — Persistent project decisions in `.dipralix/memory/decisions.md` + cross-project patterns. Two new tools (`memorize_decision`, `memorize_pattern`) the agent uses without prompting.
+- **Lazy Context** — Skills assembled per-request from `.dipralix/skills/` and `~/.dipralix/skills/`. Cuts wasted tokens on irrelevant boilerplate.
+- **Peer Review Engine** — Red Team / Blue Team / Arbitrator debate triggers automatically on high-risk bash. Rejections short-circuit execution.
+
+### Developer Experience
+- **Comment Protocol** (`/tasks`) — Write `// DIPRALIX: refactor this` in any source file. Dipralix scans, queues, executes on demand, marks `// DIPRALIX-DONE:` when finished.
+- **Plan Visualizer** (`/plan`) — Terminal-native ASCII dependency graph with risk badges (safe / review / danger) for `.dipralix/plans/current.md`.
+- **Living Docs** (`/docs sync`) — Auto-syncs `ARCHITECTURE.md` with the current codebase, including a Mermaid diagram.
+- **Code Fingerprinting** (`dipralix --init`) — Detects stack via `ProjectDna`, scaffolds `.dipralix/{project,conventions}.md`, `safety.toml`, `approval.toml`, prints a 0–100 quality score.
+
+### Power User
+- **Approval Matrix** (`/approval`) — Per-action policy with four levels (Auto / Notify / Confirm / Deny). `/approval speed fast` and `safe` flip the whole matrix in bulk.
+- **Infra Awareness** (`/infra`) — Static analysis for Dockerfile, Kubernetes manifests, and Terraform. No cloud API calls, no leaked state.
+- **Browser Engine** (`/fetch <url>`) — Reqwest fetch + HTML→Markdown extractor + on-disk cache at `~/.dipralix/cache/web/`. Headless Chromium deferred to a later release.
+
+**Breaking change:** project was renamed from FORGE to Dipralix. Binary is `dipralix-cli`, config dir is `.dipralix/`, env var is `DIPRALIX_API_KEY` (legacy `GEMINI_API_KEY` still honored).
 
 ## 💯 100% Free — No Credit Card, No Subscription
 
@@ -82,21 +104,52 @@ dipralix-cli
 
 ## Quick Start
 
-```bash
-# One-liner install
-curl -fsSL https://raw.githubusercontent.com/pratikacharya1234/dipralix/main/install.sh | bash
+Pick the install method for your OS — each downloads the prebuilt binary for v0.1.0 from GitHub Releases.
 
-# Or clone and build
+### macOS · Linux
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/pratikacharya1234/dipralix/main/install.sh | bash
+```
+
+Detects `x86_64` and `arm64` automatically. Installs to `/usr/local/bin` (or `~/.local/bin` if it can't get sudo). Falls back to `cargo install` if your platform isn't in the prebuilt matrix.
+
+### Windows (PowerShell)
+
+```powershell
+irm https://raw.githubusercontent.com/pratikacharya1234/dipralix/main/install.ps1 | iex
+```
+
+No admin needed — installs to `%LOCALAPPDATA%\Dipralix\bin\` and adds it to your user PATH.
+
+### Build from source (any OS)
+
+```bash
 git clone https://github.com/pratikacharya1234/dipralix.git
 cd dipralix
 cargo build --release
+./target/release/dipralix-cli --version
+```
 
-# Get a free API key (30 seconds, no credit card)
-# → https://aistudio.google.com/apikey
+### Get a free API key (30 seconds, no credit card)
 
-export GEMINI_API_KEY="your-free-key"
+→ https://aistudio.google.com/apikey
+
+```bash
+export DIPRALIX_API_KEY="your-free-key"   # or GEMINI_API_KEY (legacy, also works)
 dipralix-cli
 ```
+
+### Direct download
+
+Prefer to grab the binary by hand? Pick your platform on the [releases page](https://github.com/pratikacharya1234/dipralix/releases/latest):
+
+| Platform | Asset |
+|---|---|
+| macOS (Apple Silicon) | `dipralix-v0.1.0-macos-arm64.tar.gz` |
+| macOS (Intel) | `dipralix-v0.1.0-macos-x86_64.tar.gz` |
+| Linux (x86_64) | `dipralix-v0.1.0-linux-x86_64.tar.gz` |
+| Windows (x86_64) | `dipralix-v0.1.0-windows-x86_64.zip` |
 
 ## Usage
 
@@ -140,6 +193,17 @@ dipralix-cli --prompt "/test-fix 'cargo test' 5"
 | `/memory` | View all memorized facts |
 | `/compact` | Summarize history to free context |
 | `/load [dir]` | Load directory tree into context |
+| `/fingerprint` | Scan + show quality score (0–100) |
+
+### v0.1.0 Native Features
+| Command | Action |
+|---|---|
+| `/tasks [list\|execute N\|dismiss N]` | Work the `// DIPRALIX:` comment queue |
+| `/plan [view\|risk]` | Render `.dipralix/plans/current.md` as ASCII graph |
+| `/docs sync` | Regenerate `ARCHITECTURE.md` against current code |
+| `/approval [show\|speed fast\|speed safe]` | Show / flip the approval matrix |
+| `/infra [scan\|security\|optimize]` | Static-analyze Dockerfile / K8s / Terraform |
+| `/fetch <url>` | Fetch + extract page to markdown, cached locally |
 
 ### Code & Safety
 | Command | Action |
@@ -235,8 +299,8 @@ Gemini 2.5 Pro/Flash/Lite, Claude 4 Opus/Sonnet, GPT-4.1/GPT-4o/o3/o4-mini. Auto
 ### Task Orchestrator
 5-phase pipeline: Research (auto web-search) → Decompose (break into subtasks) → Dispatch (route to best models, run in parallel) → Consensus (cross-model verification) → Merge (combine results). Cost-intelligent auto-escalation on failure.
 
-### Built-in Tools (16)
-`read_file`, `write_file`, `edit_file` (fuzzy matching), `append_file`, `bash` (streaming), `list_files`, `search_files` (regex), `glob`, `create_directory`, `delete_file`, `move_file`, `copy_file`, `url_fetch` (cached), `git_snapshot`
+### Built-in Tools (17)
+`read_file`, `write_file`, `edit_file` (fuzzy matching), `append_file`, `bash` (streaming), `list_files`, `list_symbols`, `search_files` (regex), `glob`, `create_directory`, `delete_file`, `move_file`, `copy_file`, `url_fetch` (cached), `git_snapshot`, `memorize_decision`, `memorize_pattern`
 
 ### Native Integrations (33 tools)
 GitHub (12), Discord (7), Google Drive (7), Gmail (7). OAuth2 with auto-refresh.
@@ -263,6 +327,4 @@ MIT — see [LICENSE](LICENSE).
 
 <p align="center">
   <b>Built with Rust. Open source. Free forever.</b>
-</p>
-ource. Free forever.</b>
 </p>

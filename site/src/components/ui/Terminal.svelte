@@ -1,10 +1,10 @@
 <script>
   import { onMount } from 'svelte';
-  import { emitForgeEvent } from '../../lib/events';
+  import { emitDipralixEvent } from '../../lib/events';
 
   let input = '';
   let history = [
-    { type: 'system', content: 'FORGE v0.0.1 initialized.' },
+    { type: 'system', content: 'DIPRALIX v0.0.1 initialized.' },
     { type: 'system', content: 'Connected to Gemini 2.5 Flash, Claude 4 Sonnet, GPT-4.1' }
   ];
 
@@ -15,27 +15,27 @@
     history = [...history, { type: 'user', content: task }];
     input = '';
     
-    emitForgeEvent('input', { text: task });
+    emitDipralixEvent('input', { text: task });
 
-    // Simulate FORGE response
+    // Simulate DIPRALIX response
     setTimeout(() => {
-      history = [...history, { type: 'forge', content: 'Classification: Code Change' }];
-      emitForgeEvent('process', { step: 'classification' });
+      history = [...history, { type: 'dipralix', content: 'Classification: Code Change' }];
+      emitDipralixEvent('process', { step: 'classification' });
     }, 500);
 
     setTimeout(() => {
-      history = [...history, { type: 'forge', content: 'Planning: Analyzing project structure...' }];
-      emitForgeEvent('process', { step: 'planning' });
+      history = [...history, { type: 'dipralix', content: 'Planning: Analyzing project structure...' }];
+      emitDipralixEvent('process', { step: 'planning' });
     }, 1200);
 
     setTimeout(() => {
-      history = [...history, { type: 'forge', content: 'Reading site/src/pages/index.astro...' }];
-      emitForgeEvent('spark', { color: '#6366f1' });
+      history = [...history, { type: 'dipralix', content: 'Reading site/src/pages/index.astro...' }];
+      emitDipralixEvent('spark', { color: '#6366f1' });
     }, 2000);
 
     setTimeout(() => {
-      history = [...history, { type: 'forge', content: 'SUCCESS: Task completed.' }];
-      emitForgeEvent('success');
+      history = [...history, { type: 'dipralix', content: 'SUCCESS: Task completed.' }];
+      emitDipralixEvent('success');
     }, 3000);
   }
 
@@ -54,7 +54,7 @@
       <div class="w-2.5 h-2.5 rounded-full bg-yellow-500/50"></div>
       <div class="w-2.5 h-2.5 rounded-full bg-green-500/50"></div>
     </div>
-    <div class="text-[10px] uppercase tracking-widest text-white/30 font-bold ml-2">Forge Terminal — Session #0812</div>
+    <div class="text-[10px] uppercase tracking-widest text-white/30 font-bold ml-2">Dipralix Terminal — Session #0812</div>
   </div>
   
   <div 
@@ -70,7 +70,7 @@
           <span class="text-white/30">#</span>
           <span class="text-white/40 italic">{line.content}</span>
         {:else}
-          <span class="text-accent-secondary">forge</span>
+          <span class="text-accent-secondary">dipralix</span>
           <span class="text-white/80">{line.content}</span>
         {/if}
       </div>
@@ -81,7 +81,7 @@
     <span class="text-accent-primary font-mono">❯</span>
     <input 
       bind:value={input}
-      placeholder="Type a task (e.g. 'Build a 3D forge scene')"
+      placeholder="Type a task (e.g. 'Build a 3D dipralix scene')"
       class="bg-transparent border-none outline-none flex-1 font-mono text-sm text-white placeholder:text-white/20"
     />
   </form>

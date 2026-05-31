@@ -3,7 +3,7 @@
   import { Float, ContactShadows, OrbitControls } from '@threlte/extras';
   import { spring } from 'svelte/motion';
   import * as THREE from 'three';
-  import { forgeEvents } from '../../lib/events';
+  import { dipralixEvents } from '../../lib/events';
 
   const { pointer } = useThrelte();
   let rotation = 0;
@@ -18,7 +18,7 @@
 
   let sparks = [];
 
-  forgeEvents.subscribe(events => {
+  dipralixEvents.subscribe(events => {
     if (events.length === 0) return;
     const lastEvent = events[events.length - 1];
     

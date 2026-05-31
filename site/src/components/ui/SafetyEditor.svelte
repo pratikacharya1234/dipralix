@@ -18,7 +18,7 @@
   <div class="flex justify-between items-center mb-8">
     <div>
       <h3 class="text-xl font-bold mb-1">Safety Policy Editor</h3>
-      <p class="text-xs text-white/40">Configure .forge/safety.toml visually</p>
+      <p class="text-xs text-white/40">Configure .dipralix/safety.toml visually</p>
     </div>
     <button class="btn-primary py-2 px-4 text-xs">Save Changes</button>
   </div>
@@ -47,7 +47,7 @@
   <div class="mt-8 pt-8 border-t border-white/5">
     <div class="flex items-center gap-2 text-[10px] font-mono text-white/20">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-      Changes will be written to .forge/safety.toml
+      Changes will be written to .dipralix/safety.toml
     </div>
   </div>
 </div>

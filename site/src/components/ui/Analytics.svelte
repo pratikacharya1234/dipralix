@@ -43,7 +43,7 @@
   async function fetchStats() {
     try {
       // Try to fetch real repo stats (fallback to baseline if repo doesn't exist yet)
-      const repoRes = await fetch('https://api.github.com/repos/pratikacharya1234/forge');
+      const repoRes = await fetch('https://api.github.com/repos/pratikacharya1234/dipralix');
       if (repoRes.ok) {
         const repoData = await repoRes.json();
         stats.stars = repoData.stargazers_count || BASELINE.stars;
@@ -56,7 +56,7 @@
       }
       
       // Fetch contributors
-      const contributorsRes = await fetch('https://api.github.com/repos/pratikacharya1234/forge/contributors');
+      const contributorsRes = await fetch('https://api.github.com/repos/pratikacharya1234/dipralix/contributors');
       if (contributorsRes.ok) {
         stats.contributors = await contributorsRes.json();
       } else {
@@ -100,8 +100,8 @@
           <Activity class="w-4 h-4" />
           <span class="text-[10px] uppercase tracking-[0.2em] font-bold">Live System Metrics</span>
         </div>
-        <h2 class="text-4xl md:text-5xl font-bold tracking-tighter mb-2">FORGE ANALYTICS</h2>
-        <p class="text-white/40 max-w-md">Real-time telemetry from the global Forge network. Monitoring model orchestration and node activity.</p>
+        <h2 class="text-4xl md:text-5xl font-bold tracking-tighter mb-2">DIPRALIX ANALYTICS</h2>
+        <p class="text-white/40 max-w-md">Real-time telemetry from the global Dipralix network. Monitoring model orchestration and node activity.</p>
       </div>
       
       <div class="flex flex-col items-end gap-2">
@@ -206,12 +206,12 @@
               </div>
             </a>
           {/each}
-          <a href="https://github.com/pratikacharya1234/forge" class="w-12 h-12 rounded-full border-4 border-surface bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors group">
+          <a href="https://github.com/pratikacharya1234/dipralix" class="w-12 h-12 rounded-full border-4 border-surface bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors group">
             <Github class="w-5 h-5 text-white/40 group-hover:text-white" />
           </a>
         </div>
 
-        <a href="https://github.com/pratikacharya1234/forge" class="btn-primary py-3 px-8 text-sm">
+        <a href="https://github.com/pratikacharya1234/dipralix" class="btn-primary py-3 px-8 text-sm">
           Join the Mission
         </a>
       </div>

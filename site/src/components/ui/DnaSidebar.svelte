@@ -1,5 +1,5 @@
 <script>
-  import { emitForgeEvent } from '../../lib/events';
+  import { emitDipralixEvent } from '../../lib/events';
 
   let url = '';
   let isScanning = false;
@@ -12,7 +12,7 @@
   function handleScan() {
     if (!url) return;
     isScanning = true;
-    emitForgeEvent('scan', { url });
+    emitDipralixEvent('scan', { url });
     
     // Simulate scan progress
     setTimeout(() => {
@@ -29,7 +29,7 @@
 <div class="glass p-8 rounded-2xl">
   <h2 class="text-3xl font-bold mb-4 tracking-tight">PROJECT DNA</h2>
   <p class="text-white/60 mb-8 text-sm">
-    Paste a GitHub URL to visualize the architecture. FORGE analyzes dependencies, complexity, and hotspots in real-time.
+    Paste a GitHub URL to visualize the architecture. DIPRALIX analyzes dependencies, complexity, and hotspots in real-time.
   </p>
 
   <div class="space-y-4">
@@ -38,7 +38,7 @@
       <input 
         type="text" 
         bind:value={url}
-        placeholder="https://github.com/pratikacharya1234/forge"
+        placeholder="https://github.com/pratikacharya1234/dipralix"
         class="w-full terminal-input text-sm py-3"
       />
     </div>

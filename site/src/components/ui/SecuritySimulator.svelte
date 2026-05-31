@@ -84,6 +84,6 @@
 
   <div class="p-4 bg-black/20 border-t border-white/5 text-[10px] font-mono text-white/20 flex justify-between">
     <span>POLICY: strict-v1</span>
-    <span>ENGINE: forge-guard-0.4</span>
+    <span>ENGINE: dipralix-guard-0.4</span>
   </div>
 </div>
