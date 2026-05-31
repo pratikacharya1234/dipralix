@@ -1,13 +1,32 @@
-# DIPRALIX ◈ NULLVOID
+<h1 align="center">DIPRALIX</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/price-FREE-green.svg" alt="100% Free">
-  <img src="https://img.shields.io/badge/version-0.1.0-blue.svg" alt="Version 0.1.0">
-  <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License">
-  <img src="https://img.shields.io/badge/rust-1.75%2B-orange.svg" alt="Rust 1.75+">
-  <img src="https://img.shields.io/badge/context-1M%20tokens-green.svg" alt="1M Token Context">
-  <img src="https://img.shields.io/badge/models-Gemini%20%7C%20Claude%20%7C%20GPT-purple.svg" alt="Multi-model">
-  <img src="https://img.shields.io/badge/binary-12MB-lightgrey.svg" alt="Binary 12MB">
+  <b>The multi-model terminal coding agent that doesn't make you pick a side.</b><br/>
+  Free with Gemini's 1,500 req/day tier. Add Claude and GPT keys when you need them. One 12 MB Rust binary.
+</p>
+
+<p align="center">
+  <a href="https://github.com/pratikacharya1234/dipralix/releases/latest"><img src="https://img.shields.io/github/v/release/pratikacharya1234/dipralix?style=for-the-badge&color=6366f1" alt="Latest release"></a>
+  <a href="https://github.com/pratikacharya1234/dipralix/releases/latest"><img src="https://img.shields.io/github/downloads/pratikacharya1234/dipralix/total?style=for-the-badge&color=10b981" alt="Downloads"></a>
+  <a href="https://github.com/pratikacharya1234/dipralix/stargazers"><img src="https://img.shields.io/github/stars/pratikacharya1234/dipralix?style=for-the-badge&color=f59e0b" alt="Stars"></a>
+  <a href="https://github.com/pratikacharya1234/dipralix/blob/main/LICENSE"><img src="https://img.shields.io/github/license/pratikacharya1234/dipralix?style=for-the-badge&color=8b5cf6" alt="MIT License"></a>
+</p>
+
+<p align="center">
+  <a href="#quick-start"><img src="https://img.shields.io/badge/install-30%20seconds-green?style=flat-square" alt="Install in 30 seconds"></a>
+  <img src="https://img.shields.io/badge/binary-12MB-lightgrey?style=flat-square" alt="Binary 12MB">
+  <img src="https://img.shields.io/badge/context-1M%20tokens-green?style=flat-square" alt="1M Token Context">
+  <img src="https://img.shields.io/badge/models-Gemini%20%7C%20Claude%20%7C%20GPT-purple?style=flat-square" alt="Multi-model">
+  <img src="https://img.shields.io/badge/built%20with-Rust-orange?style=flat-square&logo=rust" alt="Rust">
+  <img src="https://img.shields.io/badge/MCP-supported-blue?style=flat-square" alt="MCP supported">
+</p>
+
+<p align="center">
+  <a href="https://site-delta-lime-58.vercel.app"><b>🌐 Website</b></a> ·
+  <a href="#quick-start"><b>📦 Install</b></a> ·
+  <a href="#whats-new-in-v010"><b>✨ What's new</b></a> ·
+  <a href="https://github.com/pratikacharya1234/dipralix/releases/latest"><b>📥 Download</b></a> ·
+  <a href="ide/vscode/"><b>🧩 VS Code extension</b></a>
 </p>
 
 <p align="center">
@@ -20,7 +39,9 @@
 
 ---
 
-**DIPRALIX** is the open-source, multi-model terminal AI coding agent. 1M token context. Built in Rust. Works with Gemini, Claude, and GPT — routing each task to the best model automatically. Free. No subscriptions. No lock-in.
+**Dipralix** is the open-source, multi-model terminal AI coding agent. 1M token context. Built in Rust. Works with Gemini, Claude, and GPT — routing each task to the best available model automatically. Free. No subscriptions. No lock-in.
+
+> If you like this project, **[give it a star ⭐](https://github.com/pratikacharya1234/dipralix/stargazers)** — it's the fastest way to help others discover it.
 
 ### What Makes DIPRALIX Different
 
@@ -324,12 +345,30 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 
 See [CHANGELOG.md](CHANGELOG.md) for full release history.
 
+## Star History
+
+<a href="https://www.star-history.com/#pratikacharya1234/dipralix&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=pratikacharya1234/dipralix&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=pratikacharya1234/dipralix&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=pratikacharya1234/dipralix&type=Date" />
+  </picture>
+</a>
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
 
+## Acknowledgements
+
+Dipralix exists because the model providers ship great APIs — Google, Anthropic, OpenAI. It exists for free because Google's Gemini tier is generous. And it stays small because Rust crates like `tokio`, `reqwest`, `clap`, `serde`, and `rustyline` do the heavy lifting. Thank you.
+
 ---
 
 <p align="center">
-  <b>Built with Rust. Open source. Free forever.</b>
+  <a href="https://github.com/pratikacharya1234/dipralix"><b>⭐ Star on GitHub</b></a> · <a href="https://github.com/pratikacharya1234/dipralix/issues"><b>🐛 File an issue</b></a> · <a href="https://github.com/pratikacharya1234/dipralix/discussions"><b>💬 Start a discussion</b></a>
+</p>
+
+<p align="center">
+  <sub>Built with Rust. Open source. Free forever.</sub>
 </p>

@@ -1,0 +1,78 @@
+name: Bug report
+description: Something broken? Tell us what happened.
+title: "bug: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. Please give us enough information to reproduce it.
+
+  - type: input
+    id: version
+    attributes:
+      label: Dipralix version
+      description: Output of `dipralix-cli --version`.
+      placeholder: "dipralix 0.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Linux (x86_64)
+        - Linux (aarch64)
+        - Windows (x86_64)
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Active model provider
+      options:
+        - Gemini
+        - Claude (Anthropic)
+        - GPT (OpenAI)
+        - Multiple (auto-routing)
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Exact commands or actions that trigger the bug.
+      placeholder: |
+        1. Run `dipralix-cli`
+        2. Type `…`
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened
+      description: Include the error message + the last ~20 lines of terminal output.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Project type, config snippets from `.dipralix/`, MCP servers running, etc. Redact API keys.
