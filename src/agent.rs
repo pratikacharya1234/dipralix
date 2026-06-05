@@ -8,7 +8,6 @@ use std::sync::Arc;
 
 use crate::backend::{self, BackendClient, Provider};
 use crate::config::{self, Config};
-use crate::types::*;
 use crate::integrations::IntegrationRegistry;
 use crate::learning;
 use crate::mcp::McpRegistry;
@@ -16,8 +15,9 @@ use crate::models;
 use crate::orchestrator;
 use crate::token_counter::CostTracker;
 use crate::tools::{self, ToolContext};
-use crate::{audit, project, safety, security, session, snapshot, ui};
+use crate::types::*;
 use crate::ui::nullvoid as nv;
+use crate::{audit, project, safety, security, session, snapshot, ui};
 
 // ── System prompt ──────────────────────────────────────────────────────────────
 
@@ -239,7 +239,10 @@ fn system_prompt(config: &Config) -> String {
 
     SYSTEM_PROMPT_BASE
         .replace("{model_hint}", &model_hint(config))
-        .replace("{domain_context}", DOMAIN_CTX.get().map(|s| s.as_str()).unwrap_or(""))
+        .replace(
+            "{domain_context}",
+            DOMAIN_CTX.get().map(|s| s.as_str()).unwrap_or(""),
+        )
         .replace("{project_context}", &load_project_context())
         .replace("{memory_context}", &load_memory_context())
         .replace("{skills_context}", &skills_ctx)
@@ -253,7 +256,11 @@ fn system_prompt(config: &Config) -> String {
 
 // ── Tool list / config ─────────────────────────────────────────────────────────
 
-fn build_tools(grounding: bool, mcp: Option<&McpRegistry>, integrations: Option<&IntegrationRegistry>) -> Vec<serde_json::Value> {
+fn build_tools(
+    grounding: bool,
+    mcp: Option<&McpRegistry>,
+    integrations: Option<&IntegrationRegistry>,
+) -> Vec<serde_json::Value> {
     let mut tools = vec![serde_json::json!({
         "functionDeclarations": tools::get_tool_declarations()
     })];
@@ -299,16 +306,21 @@ fn build_tools(grounding: bool, mcp: Option<&McpRegistry>, integrations: Option<
 
 fn build_tool_config() -> ToolConfig {
     ToolConfig {
-        function_calling_config: FunctionCallingConfig { mode: "AUTO".to_string() },
+        function_calling_config: FunctionCallingConfig {
+            mode: "AUTO".to_string(),
+        },
     }
 }
 
 fn build_generation_config(thinking: bool, thinking_budget: i32) -> GenerationConfig {
     GenerationConfig {
-        temperature:       Some(0.7),
+        temperature: Some(0.7),
         max_output_tokens: Some(8192),
         thinking_config: if thinking {
-            Some(ThinkingConfig { thinking_budget, include_thoughts: true })
+            Some(ThinkingConfig {
+                thinking_budget,
+                include_thoughts: true,
+            })
         } else {
             None
         },
@@ -325,8 +337,12 @@ pub async fn run_once(config: &Config, prompt: &str, screenshot: Option<&str>) -
     // Initialize MCP servers and integrations
     let mcp = Arc::new(McpRegistry::startup(&config.mcp_servers).await);
     let integrations = Arc::new(IntegrationRegistry::from_config(&config.integrations));
-    if mcp.server_count() > 0 { mcp.print_status(); }
-    if integrations.service_count() > 0 { integrations.print_status(); }
+    if mcp.server_count() > 0 {
+        mcp.print_status();
+    }
+    if integrations.service_count() > 0 {
+        integrations.print_status();
+    }
 
     let mut cost_tracker = CostTracker::new(&config.model, config.daily_budget_usd);
     let mut parts = vec![Part::text(prompt)];
@@ -337,18 +353,47 @@ pub async fn run_once(config: &Config, prompt: &str, screenshot: Option<&str>) -
         }
     }
 
-    let mut history = vec![Content { role: "user".to_string(), parts }];
-    agentic_loop(&client, &mut history, config, false, Some(mcp), Some(integrations), &mut cost_tracker).await.map(|_| ())
+    let mut history = vec![Content {
+        role: "user".to_string(),
+        parts,
+    }];
+    agentic_loop(
+        &client,
+        &mut history,
+        config,
+        false,
+        Some(mcp),
+        Some(integrations),
+        &mut cost_tracker,
+    )
+    .await
+    .map(|_| ())
 }
 
-pub async fn run_ci_agent(client: &BackendClient, config: &Config, prompt: &str) -> Result<crate::ci_runner::CiResult> {
+pub async fn run_ci_agent(
+    client: &BackendClient,
+    config: &Config,
+    prompt: &str,
+) -> Result<crate::ci_runner::CiResult> {
     let mcp = std::sync::Arc::new(McpRegistry::startup(&config.mcp_servers).await);
     let integrations = std::sync::Arc::new(IntegrationRegistry::from_config(&config.integrations));
     let mut cost_tracker = CostTracker::new(&config.model, config.daily_budget_usd);
     let parts = vec![Part::text(prompt)];
-    let mut history = vec![Content { role: "user".to_string(), parts }];
+    let mut history = vec![Content {
+        role: "user".to_string(),
+        parts,
+    }];
 
-    let total_tokens = agentic_loop(client, &mut history, config, false, Some(mcp), Some(integrations), &mut cost_tracker).await?;
+    let total_tokens = agentic_loop(
+        client,
+        &mut history,
+        config,
+        false,
+        Some(mcp),
+        Some(integrations),
+        &mut cost_tracker,
+    )
+    .await?;
 
     // Detect changed/created files from the last git diff
     let mut files_changed: Vec<String> = Vec::new();
@@ -359,7 +404,9 @@ pub async fn run_ci_agent(client: &BackendClient, config: &Config, prompt: &str)
         .output()
     {
         for line in String::from_utf8_lossy(&output.stdout).lines() {
-            if !line.is_empty() { files_changed.push(line.to_string()); }
+            if !line.is_empty() {
+                files_changed.push(line.to_string());
+            }
         }
     }
 
@@ -368,7 +415,9 @@ pub async fn run_ci_agent(client: &BackendClient, config: &Config, prompt: &str)
         .output()
     {
         for line in String::from_utf8_lossy(&output.stdout).lines() {
-            if !line.is_empty() { files_created.push(line.to_string()); }
+            if !line.is_empty() {
+                files_created.push(line.to_string());
+            }
         }
     }
 
@@ -383,7 +432,7 @@ pub async fn run_ci_agent(client: &BackendClient, config: &Config, prompt: &str)
 }
 
 /// JARVIS voice query — runs a single prompt and returns just the text response.
-    #[allow(dead_code)]
+#[allow(dead_code)]
 /// Used by the voice conversation loop. No tool execution, just chat.
 pub async fn run_jarvis_query(config: &Config, prompt: &str) -> Result<String> {
     let client = BackendClient::new(config)?;
@@ -391,24 +440,41 @@ pub async fn run_jarvis_query(config: &Config, prompt: &str) -> Result<String> {
     let _integrations = Arc::new(IntegrationRegistry::from_config(&config.integrations));
     let _cost_tracker = CostTracker::new(&config.model, config.daily_budget_usd);
     let parts = vec![Part::text(prompt)];
-    let history = vec![Content { role: "user".to_string(), parts }];
+    let history = vec![Content {
+        role: "user".to_string(),
+        parts,
+    }];
     let sys = system_prompt(config);
 
     let request = GenerateContentRequest {
         contents: history.clone(),
         tools: vec![],
         tool_config: None,
-        system_instruction: Some(SystemContent { parts: vec![Part::text(&sys)] }),
-        generation_config: Some(build_generation_config(config.thinking, config.thinking_budget)),
+        system_instruction: Some(SystemContent {
+            parts: vec![Part::text(&sys)],
+        }),
+        generation_config: Some(build_generation_config(
+            config.thinking,
+            config.thinking_budget,
+        )),
     };
 
     let response = client.generate(request).await?;
     if let Some(candidates) = response.candidates {
         for c in candidates {
             if let Some(content) = c.content {
-                let text: String = content.parts.iter().filter_map(|p| {
-                    if let Part::Text { text, .. } = p { Some(text.as_str()) } else { None }
-                }).collect::<Vec<_>>().join(" ");
+                let text: String = content
+                    .parts
+                    .iter()
+                    .filter_map(|p| {
+                        if let Part::Text { text, .. } = p {
+                            Some(text.as_str())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" ");
                 if !text.is_empty() {
                     return Ok(text);
                 }
@@ -425,20 +491,26 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
 
     nv::print_banner();
 
-    if mcp.server_count() > 0 { mcp.print_status(); println!(); }
-    if integrations.service_count() > 0 { integrations.print_status(); println!(); }
+    if mcp.server_count() > 0 {
+        mcp.print_status();
+        println!();
+    }
+    if integrations.service_count() > 0 {
+        integrations.print_status();
+        println!();
+    }
 
     let mut cost_tracker = CostTracker::new(&config.model, config.daily_budget_usd);
 
-    let mut history:         Vec<Content> = Vec::new();
-    let mut current_model    = config.model.clone();
-    let mut grounding        = config.grounding;
-    let mut thinking         = config.thinking;
-    let mut thinking_budget  = config.thinking_budget;
-    let mut auto_apply       = config.auto_apply;
-    let mut explain_exec     = config.explain_before_execute;
-    let mut debug            = false;
-    let mut session_tokens   = 0u32;
+    let mut history: Vec<Content> = Vec::new();
+    let mut current_model = config.model.clone();
+    let mut grounding = config.grounding;
+    let mut thinking = config.thinking;
+    let mut thinking_budget = config.thinking_budget;
+    let mut auto_apply = config.auto_apply;
+    let mut explain_exec = config.explain_before_execute;
+    let mut debug = false;
+    let mut session_tokens = 0u32;
 
     // Announce project.md if found
     if std::path::Path::new(".dipralix/project.md").exists() {
@@ -472,12 +544,20 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                 println!("{}", "(Ctrl-C — type /quit to exit)".dimmed());
                 continue;
             }
-            Err(rustyline::error::ReadlineError::Eof) => { println!(); break; }
-            Err(e) => { nv::print_error(&e.to_string()); break; }
+            Err(rustyline::error::ReadlineError::Eof) => {
+                println!();
+                break;
+            }
+            Err(e) => {
+                nv::print_error(&e.to_string());
+                break;
+            }
         };
 
         let line = line.trim().to_string();
-        if line.is_empty() { continue; }
+        if line.is_empty() {
+            continue;
+        }
         let _ = rl.add_history_entry(&line);
 
         // Echo user message — nullvoid style
@@ -487,7 +567,6 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
         if line.starts_with('/') {
             let parts: Vec<&str> = line.splitn(2, ' ').collect();
             match parts[0] {
-
                 "/quit" | "/exit" | "/q" => {
                     println!("{}", "Goodbye!".bright_blue());
                     break;
@@ -508,7 +587,8 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                                 .into_iter()
                                 .map(|m| {
                                     let name = m.name.trim_start_matches("models/").to_string();
-                                    let desc = m.input_token_limit
+                                    let desc = m
+                                        .input_token_limit
                                         .map(|t| format!("{}K ctx", t / 1_000))
                                         .unwrap_or_else(|| m.display_name.unwrap_or_default());
                                     (name, desc)
@@ -533,16 +613,26 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                 }
 
                 "/history" => {
-                    let n: usize = parts.get(1)
+                    let n: usize = parts
+                        .get(1)
                         .and_then(|s| s.trim().parse().ok())
                         .unwrap_or(5);
                     let start = history.len().saturating_sub(n * 2);
                     for msg in &history[start..] {
-                        let label = if msg.role == "user" { "You".green() } else { "DIPRALIX".blue() };
+                        let label = if msg.role == "user" {
+                            "You".green()
+                        } else {
+                            "DIPRALIX".blue()
+                        };
                         for part in &msg.parts {
                             if let Part::Text { text, .. } = part {
                                 let preview: String = text.chars().take(200).collect();
-                                println!("{}: {}{}", label, preview, if text.len() > 200 { "…" } else { "" });
+                                println!(
+                                    "{}: {}{}",
+                                    label,
+                                    preview,
+                                    if text.len() > 200 { "…" } else { "" }
+                                );
                             }
                         }
                     }
@@ -554,7 +644,9 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                     match sub {
                         "list" | "" => {
                             match crate::comment_protocol::CommentProtocol::scan_workspace() {
-                                Ok(tasks) => crate::comment_protocol::CommentProtocol::print_tasks(&tasks),
+                                Ok(tasks) => {
+                                    crate::comment_protocol::CommentProtocol::print_tasks(&tasks)
+                                }
                                 Err(e) => nv::print_error(&e.to_string()),
                             }
                         }
@@ -572,10 +664,23 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                                                 Then replace the `DIPRALIX:` marker on that line with `DIPRALIX-DONE:`.",
                                                 task.file, task.line_num, task.description
                                             );
-                                            let active_cfg = active_config(config, &current_model, grounding, thinking, thinking_budget, auto_apply);
+                                            let active_cfg = active_config(
+                                                config,
+                                                &current_model,
+                                                grounding,
+                                                thinking,
+                                                thinking_budget,
+                                                auto_apply,
+                                            );
                                             match BackendClient::new(&active_cfg) {
                                                 Ok(c) => {
-                                                    if let Err(e) = crate::agent::run_ci_agent(&c, &active_cfg, &prompt).await {
+                                                    if let Err(e) = crate::agent::run_ci_agent(
+                                                        &c,
+                                                        &active_cfg,
+                                                        &prompt,
+                                                    )
+                                                    .await
+                                                    {
                                                         nv::print_error(&e.to_string());
                                                     }
                                                 }
@@ -593,17 +698,29 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                             let n: usize = arg.parse().unwrap_or(0);
                             if n == 0 {
                                 println!("{}", "Usage: /tasks dismiss <num>".dimmed());
-                            } else if let Ok(tasks) = crate::comment_protocol::CommentProtocol::scan_workspace() {
+                            } else if let Ok(tasks) =
+                                crate::comment_protocol::CommentProtocol::scan_workspace()
+                            {
                                 if let Some(task) = tasks.get(n - 1) {
-                                    if let Err(e) = crate::comment_protocol::CommentProtocol::dismiss(task) {
+                                    if let Err(e) =
+                                        crate::comment_protocol::CommentProtocol::dismiss(task)
+                                    {
                                         nv::print_error(&e.to_string());
                                     } else {
-                                        println!("  {} Dismissed task #{} in {}", "[OK]".green(), n, task.file);
+                                        println!(
+                                            "  {} Dismissed task #{} in {}",
+                                            "[OK]".green(),
+                                            n,
+                                            task.file
+                                        );
                                     }
                                 }
                             }
                         }
-                        _ => println!("{}", "Usage: /tasks [list|execute <n>|dismiss <n>]".dimmed()),
+                        _ => println!(
+                            "{}",
+                            "Usage: /tasks [list|execute <n>|dismiss <n>]".dimmed()
+                        ),
                     }
                 }
 
@@ -619,7 +736,10 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                                 _ => println!("{}", "Usage: /approval speed [fast|safe]".dimmed()),
                             }
                         }
-                        _ => println!("{}", "Usage: /approval [show|speed fast|speed safe]".dimmed()),
+                        _ => println!(
+                            "{}",
+                            "Usage: /approval [show|speed fast|speed safe]".dimmed()
+                        ),
                     }
                 }
 
@@ -650,7 +770,15 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                         match crate::browser::fetch_markdown(url).await {
                             Ok(md) => {
                                 let preview: String = md.chars().take(2000).collect();
-                                println!("{}\n{}", preview, if md.len() > 2000 { "  …(truncated, full content cached)".dimmed().to_string() } else { String::new() });
+                                println!(
+                                    "{}\n{}",
+                                    preview,
+                                    if md.len() > 2000 {
+                                        "  …(truncated, full content cached)".dimmed().to_string()
+                                    } else {
+                                        String::new()
+                                    }
+                                );
                             }
                             Err(e) => nv::print_error(&e.to_string()),
                         }
@@ -664,10 +792,20 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                 "/docs" => {
                     let cmd = parts.get(1).map(|s| s.trim()).unwrap_or("");
                     if cmd == "sync" || cmd == "architecture" {
-                        let active_cfg = active_config(config, &current_model, grounding, thinking, thinking_budget, auto_apply);
+                        let active_cfg = active_config(
+                            config,
+                            &current_model,
+                            grounding,
+                            thinking,
+                            thinking_budget,
+                            auto_apply,
+                        );
                         match BackendClient::new(&active_cfg) {
                             Ok(c) => {
-                                let docs = crate::living_docs::LivingDocs::new(std::sync::Arc::new(c), active_cfg);
+                                let docs = crate::living_docs::LivingDocs::new(
+                                    std::sync::Arc::new(c),
+                                    active_cfg,
+                                );
                                 if let Err(e) = docs.sync_docs().await {
                                     nv::print_error(&format!("Living Docs failed: {}", e));
                                 }
@@ -675,7 +813,10 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                             Err(e) => nv::print_error(&e.to_string()),
                         }
                     } else {
-                        println!("{}", "Usage: /docs sync  (auto-sync ARCHITECTURE.md)".dimmed());
+                        println!(
+                            "{}",
+                            "Usage: /docs sync  (auto-sync ARCHITECTURE.md)".dimmed()
+                        );
                     }
                 }
 
@@ -688,26 +829,38 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                                 Ok(all) => {
                                     for m in models::filter_coding_models(&all) {
                                         let name = m.name.trim_start_matches("models/");
-                                        let marker = if name.contains(&*current_model) || current_model.contains(name) {
+                                        let marker = if name.contains(&*current_model)
+                                            || current_model.contains(name)
+                                        {
                                             "->".green()
                                         } else {
                                             "  ".normal()
                                         };
-                                        let desc = m.input_token_limit
+                                        let desc = m
+                                            .input_token_limit
                                             .map(|t| format!("{}K ctx", t / 1_000))
                                             .unwrap_or_default();
-                                        println!("  {} {:<38} {}", marker, name.cyan(), desc.dimmed());
+                                        println!(
+                                            "  {} {:<38} {}",
+                                            marker,
+                                            name.cyan(),
+                                            desc.dimmed()
+                                        );
                                     }
                                 }
                                 Err(_) => {
                                     // API unreachable — show known-good set
                                     for (m, d) in [
-                                        ("gemini-3.1-pro",         "1M ctx  80.6% SWE-bench"),
-                                        ("gemini-3-flash",         "1M ctx  latest fast"),
-                                        ("gemini-2.5-pro",         "1M ctx  deep reasoning"),
-                                        ("gemini-2.5-flash",       "1M ctx  fast & reliable"),
+                                        ("gemini-3.1-pro", "1M ctx  80.6% SWE-bench"),
+                                        ("gemini-3-flash", "1M ctx  latest fast"),
+                                        ("gemini-2.5-pro", "1M ctx  deep reasoning"),
+                                        ("gemini-2.5-flash", "1M ctx  fast & reliable"),
                                     ] {
-                                        let marker = if m == current_model { "->".green() } else { "  ".normal() };
+                                        let marker = if m == current_model {
+                                            "->".green()
+                                        } else {
+                                            "  ".normal()
+                                        };
                                         println!("  {} {:<38} {}", marker, m.cyan(), d.dimmed());
                                     }
                                 }
@@ -721,16 +874,27 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                             };
                             if let Some(ref list) = claude_models {
                                 for (m, d) in list {
-                                    let marker = if m == &current_model { "->".green() } else { "  ".normal() };
+                                    let marker = if m == &current_model {
+                                        "->".green()
+                                    } else {
+                                        "  ".normal()
+                                    };
                                     println!("  {} {:<38} {}", marker, m.cyan(), d.dimmed());
                                 }
                             } else {
                                 for m in ["claude-4-opus", "claude-4-sonnet", "claude-3.5-sonnet"] {
-                                    let marker = if m == current_model { "->".green() } else { "  ".normal() };
+                                    let marker = if m == current_model {
+                                        "->".green()
+                                    } else {
+                                        "  ".normal()
+                                    };
                                     println!("  {} {}", marker, m.cyan());
                                 }
                                 if config.anthropic_api_key.is_none() {
-                                    println!("     {}", "(set ANTHROPIC_API_KEY for live list)".bright_black());
+                                    println!(
+                                        "     {}",
+                                        "(set ANTHROPIC_API_KEY for live list)".bright_black()
+                                    );
                                 }
                             }
                             println!();
@@ -742,38 +906,66 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                             };
                             if let Some(ref list) = openai_models {
                                 for (m, d) in list {
-                                    let marker = if m == &current_model { "->".green() } else { "  ".normal() };
+                                    let marker = if m == &current_model {
+                                        "->".green()
+                                    } else {
+                                        "  ".normal()
+                                    };
                                     println!("  {} {:<38} {}", marker, m.cyan(), d.dimmed());
                                 }
                             } else {
                                 for m in ["gpt-4.1", "gpt-4o", "o3", "o4-mini"] {
-                                    let marker = if m == current_model { "->".green() } else { "  ".normal() };
+                                    let marker = if m == current_model {
+                                        "->".green()
+                                    } else {
+                                        "  ".normal()
+                                    };
                                     println!("  {} {}", marker, m.cyan());
                                 }
                                 if config.openai_api_key.is_none() {
-                                    println!("     {}", "(set OPENAI_API_KEY for live list)".bright_black());
+                                    println!(
+                                        "     {}",
+                                        "(set OPENAI_API_KEY for live list)".bright_black()
+                                    );
                                 }
                             }
                             println!();
-                            println!("  {} /model auto — auto-select best model for each task", "Tip:".dimmed());
+                            println!(
+                                "  {} /model auto — auto-select best model for each task",
+                                "Tip:".dimmed()
+                            );
                         }
                         Some("info") => {
                             let provider = backend::detect_provider(&current_model);
                             let prov_name = match provider {
                                 Provider::Gemini => "Gemini",
                                 Provider::Anthropic => "Anthropic",
-                                Provider::OpenAI => "OpenAI", Provider::Ollama => "Ollama (local)",
+                                Provider::OpenAI => "OpenAI",
+                                Provider::Ollama => "Ollama (local)",
                             };
                             println!("{} {}", "Current model:".dimmed(), current_model.cyan());
                             println!("{} {}", "Provider:".dimmed(), prov_name.dimmed());
-                            println!("{} {}", "Context window:".dimmed(),
-                                format!("{}M tokens", config::context_window(&current_model) / 1_000_000).dimmed());
+                            println!(
+                                "{} {}",
+                                "Context window:".dimmed(),
+                                format!(
+                                    "{}M tokens",
+                                    config::context_window(&current_model) / 1_000_000
+                                )
+                                .dimmed()
+                            );
                         }
                         Some("auto") => {
                             println!("{} Auto-routing enabled. The agent will select the best model for each task.", "[AUTO]".cyan());
                             println!("  {} complex tasks (refactor, architecture, security) → reasoning model", "▸".dimmed());
-                            println!("  {} normal tasks (fix, add, implement) → balanced model", "▸".dimmed());
-                            println!("  {} simple tasks (find, read, explain) → fast/cheap model", "▸".dimmed());
+                            println!(
+                                "  {} normal tasks (fix, add, implement) → balanced model",
+                                "▸".dimmed()
+                            );
+                            println!(
+                                "  {} simple tasks (find, read, explain) → fast/cheap model",
+                                "▸".dimmed()
+                            );
                             current_model = "auto".to_string();
                         }
                         Some(model) if !model.is_empty() => {
@@ -789,8 +981,18 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                                     println!("{} API key required for {}. Set via --anthropic-api-key / --openai-api-key or config.toml.", "!".yellow(), model);
                                 } else {
                                     current_model = model.to_string();
-                                    println!("{} {} (provider: {})", "Model:".dimmed(), current_model.cyan(),
-                                        match new_provider { Provider::Gemini => "Gemini", Provider::Anthropic => "Claude", Provider::OpenAI => "OpenAI", Provider::Ollama => "Ollama (local)" }.dimmed());
+                                    println!(
+                                        "{} {} (provider: {})",
+                                        "Model:".dimmed(),
+                                        current_model.cyan(),
+                                        match new_provider {
+                                            Provider::Gemini => "Gemini",
+                                            Provider::Anthropic => "Claude",
+                                            Provider::OpenAI => "OpenAI",
+                                            Provider::Ollama => "Ollama (local)",
+                                        }
+                                        .dimmed()
+                                    );
                                 }
                             } else {
                                 current_model = model.to_string();
@@ -814,13 +1016,16 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                             } else {
                                 println!("  Available models (auto-detected):");
                                 for m in coding {
-                                    let marker = if m.name.contains(&current_model) || current_model.contains(&m.name) {
+                                    let marker = if m.name.contains(&current_model)
+                                        || current_model.contains(&m.name)
+                                    {
                                         "->".green()
                                     } else {
                                         "  ".normal()
                                     };
                                     let display = m.display_name.as_deref().unwrap_or(&m.name);
-                                    let tokens = m.input_token_limit
+                                    let tokens = m
+                                        .input_token_limit
                                         .map(|t| format!("{}K tokens", t / 1000))
                                         .unwrap_or_default();
                                     println!(
@@ -868,54 +1073,80 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
 
                 "/web" => {
                     grounding = !grounding;
-                    println!("{}", if grounding {
-                        "Google Search grounding ENABLED.".green().to_string()
-                    } else {
-                        "Google Search grounding DISABLED.".yellow().to_string()
-                    });
+                    println!(
+                        "{}",
+                        if grounding {
+                            "Google Search grounding ENABLED.".green().to_string()
+                        } else {
+                            "Google Search grounding DISABLED.".yellow().to_string()
+                        }
+                    );
                 }
 
-                "/think" => {
-                    match parts.get(1).map(|s| s.trim()) {
-                        None | Some("on") => {
-                            thinking = true;
-                            println!("{} ThinkMode ON — budget: {} tokens", "[THINK]".yellow(), thinking_budget);
-                        }
-                        Some("off") => {
-                            thinking = false;
-                            println!("{}", "ThinkMode OFF.".dimmed());
-                        }
-                        Some(arg) if arg.starts_with("budget=") => {
-                            if let Ok(n) = arg[7..].parse::<i32>() {
-                                thinking_budget = n.clamp(0, 24576);
-                                thinking = true;
-                                println!("{} ThinkMode ON — budget: {} tokens", "[THINK]".yellow(), thinking_budget);
-                            } else {
-                                println!("Usage: /think budget=8000");
-                            }
-                        }
-                        _ => println!("Usage: /think  /think off  /think budget=8000"),
+                "/think" => match parts.get(1).map(|s| s.trim()) {
+                    None | Some("on") => {
+                        thinking = true;
+                        println!(
+                            "{} ThinkMode ON — budget: {} tokens",
+                            "[THINK]".yellow(),
+                            thinking_budget
+                        );
                     }
-                }
+                    Some("off") => {
+                        thinking = false;
+                        println!("{}", "ThinkMode OFF.".dimmed());
+                    }
+                    Some(arg) if arg.starts_with("budget=") => {
+                        if let Ok(n) = arg[7..].parse::<i32>() {
+                            thinking_budget = n.clamp(0, 24576);
+                            thinking = true;
+                            println!(
+                                "{} ThinkMode ON — budget: {} tokens",
+                                "[THINK]".yellow(),
+                                thinking_budget
+                            );
+                        } else {
+                            println!("Usage: /think budget=8000");
+                        }
+                    }
+                    _ => println!("Usage: /think  /think off  /think budget=8000"),
+                },
 
-                "/apply" => {
-                    match parts.get(1).map(|s| s.trim()) {
-                        Some("on")  => { auto_apply = true;  println!("{}", "Auto-apply ON — diffs accepted without prompt.".yellow()); }
-                        Some("off") => { auto_apply = false; println!("{}", "Auto-apply OFF — diff preview enabled.".green()); }
-                        _           => {
-                            auto_apply = !auto_apply;
-                            println!("{}", if auto_apply {
+                "/apply" => match parts.get(1).map(|s| s.trim()) {
+                    Some("on") => {
+                        auto_apply = true;
+                        println!(
+                            "{}",
+                            "Auto-apply ON — diffs accepted without prompt.".yellow()
+                        );
+                    }
+                    Some("off") => {
+                        auto_apply = false;
+                        println!("{}", "Auto-apply OFF — diff preview enabled.".green());
+                    }
+                    _ => {
+                        auto_apply = !auto_apply;
+                        println!(
+                            "{}",
+                            if auto_apply {
                                 "Auto-apply ON.".yellow().to_string()
                             } else {
                                 "Auto-apply OFF — diff preview enabled.".green().to_string()
-                            });
-                        }
+                            }
+                        );
                     }
-                }
+                },
 
                 "/debug" => {
                     debug = !debug;
-                    println!("{}", if debug { "Debug ON.".yellow().to_string() } else { "Debug OFF.".dimmed().to_string() });
+                    println!(
+                        "{}",
+                        if debug {
+                            "Debug ON.".yellow().to_string()
+                        } else {
+                            "Debug OFF.".dimmed().to_string()
+                        }
+                    );
                 }
 
                 "/memorize" => {
@@ -927,7 +1158,9 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                         let entry = format!("- [{}] {}", now.format("%Y-%m-%d"), fact);
                         let path = std::path::Path::new(".dipralix/memory.md");
                         let mut content = std::fs::read_to_string(path).unwrap_or_default();
-                        if !content.is_empty() && !content.ends_with('\n') { content.push('\n'); }
+                        if !content.is_empty() && !content.ends_with('\n') {
+                            content.push('\n');
+                        }
                         content.push_str(&entry);
                         content.push('\n');
                         if let Err(e) = std::fs::write(path, &content) {
@@ -941,23 +1174,40 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                 "/forget" => {
                     let keyword = parts.get(1).map(|s| s.trim()).unwrap_or("");
                     if keyword.is_empty() {
-                        println!("{}", "Usage: /forget <keyword> — remove matching entries from memory".dimmed());
+                        println!(
+                            "{}",
+                            "Usage: /forget <keyword> — remove matching entries from memory"
+                                .dimmed()
+                        );
                     } else {
                         let path = std::path::Path::new(".dipralix/memory.md");
                         match std::fs::read_to_string(path) {
                             Ok(content) => {
-                                let filtered: Vec<&str> = content.lines()
-                                    .filter(|line| !line.to_lowercase().contains(&keyword.to_lowercase()))
+                                let filtered: Vec<&str> = content
+                                    .lines()
+                                    .filter(|line| {
+                                        !line.to_lowercase().contains(&keyword.to_lowercase())
+                                    })
                                     .collect();
                                 let removed = content.lines().count() - filtered.len();
                                 if removed == 0 {
-                                    println!("{} No entries matching '{}'", "[MEM]".magenta(), keyword);
+                                    println!(
+                                        "{} No entries matching '{}'",
+                                        "[MEM]".magenta(),
+                                        keyword
+                                    );
                                 } else {
                                     let new_content = filtered.join("\n") + "\n";
                                     if let Err(e) = std::fs::write(path, &new_content) {
                                         println!("{} Failed to update: {}", "[ERR]".red(), e);
                                     } else {
-                                        println!("{} Removed {} entr{} matching '{}'", "[MEM]".magenta(), removed, if removed == 1 { "y" } else { "ies" }, keyword);
+                                        println!(
+                                            "{} Removed {} entr{} matching '{}'",
+                                            "[MEM]".magenta(),
+                                            removed,
+                                            if removed == 1 { "y" } else { "ies" },
+                                            keyword
+                                        );
                                     }
                                 }
                             }
@@ -980,7 +1230,11 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                             }
                             println!();
                         }
-                        _ => println!("{} No memories yet. Use {} to add one.", "[MEM]".magenta(), "/memorize <fact>".cyan()),
+                        _ => println!(
+                            "{} No memories yet. Use {} to add one.",
+                            "[MEM]".magenta(),
+                            "/memorize <fact>".cyan()
+                        ),
                     }
                 }
 
@@ -989,10 +1243,24 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                     if learnings.is_empty() {
                         println!("{}", "[ALICE] No auto-learned patterns yet. Accumulate as errors are encountered and fixed.".cyan());
                     } else {
-                        println!("\n{} Auto-Learned Patterns ({} total):", "[ALICE]".cyan(), learnings.len());
+                        println!(
+                            "\n{} Auto-Learned Patterns ({} total):",
+                            "[ALICE]".cyan(),
+                            learnings.len()
+                        );
                         for l in &learnings {
-                            let count = if l.count > 1 { format!(" ({}x)", l.count) } else { String::new() };
-                            println!("  {} [{}/{}] {}", "*".dimmed(), l.category.dimmed(), count.trim(), l.lesson.dimmed());
+                            let count = if l.count > 1 {
+                                format!(" ({}x)", l.count)
+                            } else {
+                                String::new()
+                            };
+                            println!(
+                                "  {} [{}/{}] {}",
+                                "*".dimmed(),
+                                l.category.dimmed(),
+                                count.trim(),
+                                l.lesson.dimmed()
+                            );
                         }
                         println!();
                     }
@@ -1006,7 +1274,11 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                         println!("  Build:      {}", dna.build_command.dimmed());
                         println!("  Test:       {}", dna.test_command.dimmed());
                         if !dna.indent_style.is_empty() {
-                            println!("  Indent:     {} (width: {})", dna.indent_style.cyan(), dna.indent_width);
+                            println!(
+                                "  Indent:     {} (width: {})",
+                                dna.indent_style.cyan(),
+                                dna.indent_width
+                            );
                         }
                         for c in &dna.conventions {
                             println!("  Convention: {}", c.dimmed());
@@ -1017,25 +1289,62 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                     println!();
                 }
 
-                "/explain" => {
-                    match parts.get(1).map(|s| s.trim()) {
-                        Some("on")  => { explain_exec = true;  println!("{}", "Explain-before-execute ON — agent will summarize planned actions before running.".green()); }
-                        Some("off") => { explain_exec = false; println!("{}", "Explain-before-execute OFF.".dimmed()); }
-                        _ => {
-                            explain_exec = !explain_exec;
-                            println!("{}", if explain_exec { "Explain-before-execute ON.".green().to_string() } else { "Explain-before-execute OFF.".dimmed().to_string() });
-                        }
+                "/explain" => match parts.get(1).map(|s| s.trim()) {
+                    Some("on") => {
+                        explain_exec = true;
+                        println!("{}", "Explain-before-execute ON — agent will summarize planned actions before running.".green());
                     }
-                }
+                    Some("off") => {
+                        explain_exec = false;
+                        println!("{}", "Explain-before-execute OFF.".dimmed());
+                    }
+                    _ => {
+                        explain_exec = !explain_exec;
+                        println!(
+                            "{}",
+                            if explain_exec {
+                                "Explain-before-execute ON.".green().to_string()
+                            } else {
+                                "Explain-before-execute OFF.".dimmed().to_string()
+                            }
+                        );
+                    }
+                },
 
                 "/test-fix" => {
                     let test_cmd = parts.get(1).map(|s| s.trim()).unwrap_or("cargo test");
-                    let max_cycles: u32 = parts.get(2).and_then(|s| s.trim().parse().ok()).unwrap_or(3);
-                    println!("{} Test-fix mode: '{}' (max {} cycles)", "[TEST]".cyan(), test_cmd, max_cycles);
-                    let active_cfg = active_config(config, &current_model, grounding, thinking, thinking_budget, auto_apply);
+                    let max_cycles: u32 = parts
+                        .get(2)
+                        .and_then(|s| s.trim().parse().ok())
+                        .unwrap_or(3);
+                    println!(
+                        "{} Test-fix mode: '{}' (max {} cycles)",
+                        "[TEST]".cyan(),
+                        test_cmd,
+                        max_cycles
+                    );
+                    let active_cfg = active_config(
+                        config,
+                        &current_model,
+                        grounding,
+                        thinking,
+                        thinking_budget,
+                        auto_apply,
+                    );
                     match BackendClient::new(&active_cfg) {
                         Ok(active_client) => {
-                            if let Err(e) = test_fix_loop(&active_client, &mut history, &active_cfg, test_cmd, max_cycles, Some(mcp.clone()), Some(integrations.clone()), &mut cost_tracker).await {
+                            if let Err(e) = test_fix_loop(
+                                &active_client,
+                                &mut history,
+                                &active_cfg,
+                                test_cmd,
+                                max_cycles,
+                                Some(mcp.clone()),
+                                Some(integrations.clone()),
+                                &mut cost_tracker,
+                            )
+                            .await
+                            {
                                 nv::print_error(&e.to_string());
                             }
                         }
@@ -1048,14 +1357,27 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                     if task_req.is_empty() {
                         println!("{}", "Usage: /task <requirement> — full pipeline: research → decompose → dispatch → consensus → merge".dimmed());
                     } else {
-                        let active_cfg = active_config(config, &current_model, grounding, thinking, thinking_budget, auto_apply);
+                        let active_cfg = active_config(
+                            config,
+                            &current_model,
+                            grounding,
+                            thinking,
+                            thinking_budget,
+                            auto_apply,
+                        );
                         let mut orch = orchestrator::TaskOrchestrator::new(&active_cfg);
-                        match orch.run(&task_req, Some(mcp.clone()), Some(integrations.clone())).await {
+                        match orch
+                            .run(&task_req, Some(mcp.clone()), Some(integrations.clone()))
+                            .await
+                        {
                             Ok(report) => {
                                 // Add the task result to conversation history
                                 history.push(Content {
                                     role: "user".to_string(),
-                                    parts: vec![Part::text(format!("Task completed: {}", task_req))],
+                                    parts: vec![Part::text(format!(
+                                        "Task completed: {}",
+                                        task_req
+                                    ))],
                                 });
                                 history.push(Content {
                                     role: "model".to_string(),
@@ -1068,7 +1390,10 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                 }
 
                 "/undo" => {
-                    let n: usize = parts.get(1).and_then(|s| s.trim().parse().ok()).unwrap_or(1);
+                    let n: usize = parts
+                        .get(1)
+                        .and_then(|s| s.trim().parse().ok())
+                        .unwrap_or(1);
                     let mut count = 0;
                     for _ in 0..n {
                         match snapshot::undo() {
@@ -1103,19 +1428,30 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
 
                 "/tokens" => {
                     let window = config::context_window(&current_model);
-                    println!("{} {} tokens used this session", "◦".dimmed(), session_tokens.to_string().cyan());
+                    println!(
+                        "{} {} tokens used this session",
+                        "◦".dimmed(),
+                        session_tokens.to_string().cyan()
+                    );
                     ui::print_context_bar(session_tokens, window);
                 }
 
                 "/audit" => {
-                    let n: usize = parts.get(1).and_then(|s| s.trim().parse().ok()).unwrap_or(10);
+                    let n: usize = parts
+                        .get(1)
+                        .and_then(|s| s.trim().parse().ok())
+                        .unwrap_or(10);
                     let entries = audit::tail(n);
                     if entries.is_empty() {
                         println!("{}", "No audit entries yet.".dimmed());
                     } else {
                         println!();
                         for e in &entries {
-                            let icon = if e.success { "[OK]".green() } else { "[ERR]".red() };
+                            let icon = if e.success {
+                                "[OK]".green()
+                            } else {
+                                "[ERR]".red()
+                            };
                             println!(
                                 "  {} {} {}  {}",
                                 icon,
@@ -1131,7 +1467,12 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                 "/snapshot" => {
                     let label = parts.get(1).map(|s| s.trim()).unwrap_or("manual");
                     let args = serde_json::json!({ "name": label });
-                    let ctx  = ToolContext { stream_output: false, auto_apply, mcp: Some(mcp.clone()), integrations: Some(integrations.clone()) };
+                    let ctx = ToolContext {
+                        stream_output: false,
+                        auto_apply,
+                        mcp: Some(mcp.clone()),
+                        integrations: Some(integrations.clone()),
+                    };
                     let result = tools::execute_tool("git_snapshot", &args, &ctx).await;
                     if result.is_error {
                         nv::print_tool_result(false, &result.output);
@@ -1141,10 +1482,14 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                 }
 
                 "/rollback" => {
-                    println!("{} Rolling back to last git stash...", "[BUSY]".bright_yellow());
+                    println!(
+                        "{} Rolling back to last git stash...",
+                        "[BUSY]".bright_yellow()
+                    );
                     let out = tokio::process::Command::new("git")
                         .args(["stash", "pop"])
-                        .output().await;
+                        .output()
+                        .await;
                     match out {
                         Ok(o) if o.status.success() => {
                             let msg = String::from_utf8_lossy(&o.stdout).trim().to_string();
@@ -1170,23 +1515,30 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                             Err(e) => nv::print_error(&format!("cd: {}", e)),
                         }
                     } else {
-                        println!("{}", std::env::current_dir()
-                            .map(|p| p.display().to_string())
-                            .unwrap_or_else(|_| "?".to_string()));
+                        println!(
+                            "{}",
+                            std::env::current_dir()
+                                .map(|p| p.display().to_string())
+                                .unwrap_or_else(|_| "?".to_string())
+                        );
                     }
                 }
 
                 "/load" => {
                     let path = parts.get(1).map(|s| s.trim()).unwrap_or(".");
-                    println!("{} Loading project from '{}'...", "[BUSY]".bright_yellow(), path);
+                    println!(
+                        "{} Loading project from '{}'...",
+                        "[BUSY]".bright_yellow(),
+                        path
+                    );
                     match project::load_project(path, None) {
                         Ok(proj) => {
                             history.push(Content {
-                                role:  "user".to_string(),
+                                role: "user".to_string(),
                                 parts: vec![Part::text(&proj.context_block)],
                             });
                             history.push(Content {
-                                role:  "model".to_string(),
+                                role: "model".to_string(),
                                 parts: vec![Part::text(format!(
                                     "OK Loaded {} files (~{} tokens). Ask me anything.",
                                     proj.file_count, proj.token_estimate
@@ -1194,7 +1546,9 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                             });
                             println!(
                                 "{} Loaded {} files (~{} tokens) into context.",
-                                "[OK]".green(), proj.file_count, proj.token_estimate
+                                "[OK]".green(),
+                                proj.file_count,
+                                proj.token_estimate
                             );
                         }
                         Err(e) => nv::print_error(&e.to_string()),
@@ -1204,26 +1558,34 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                 "/learn" => {
                     let url = match parts.get(1).map(|s| s.trim()) {
                         Some(u) if !u.is_empty() => u,
-                        _ => { println!("Usage: /learn <git-url>"); continue; }
+                        _ => {
+                            println!("Usage: /learn <git-url>");
+                            continue;
+                        }
                     };
                     println!("{} Cloning {}...", "[BUSY]".bright_yellow(), url);
                     match project::clone_and_load(url).await {
                         Ok(proj) => {
                             history.push(Content {
-                                role:  "user".to_string(),
+                                role: "user".to_string(),
                                 parts: vec![Part::text(format!(
                                     "I cloned {} and want to learn about it:\n\n{}",
                                     url, proj.context_block
                                 ))],
                             });
                             history.push(Content {
-                                role:  "model".to_string(),
+                                role: "model".to_string(),
                                 parts: vec![Part::text(format!(
                                     "OK Loaded {} ({} files, ~{} tokens). Ask me anything.",
                                     url, proj.file_count, proj.token_estimate
                                 ))],
                             });
-                            println!("{} Loaded {} files (~{} tokens).", "[OK]".green(), proj.file_count, proj.token_estimate);
+                            println!(
+                                "{} Loaded {} files (~{} tokens).",
+                                "[OK]".green(),
+                                proj.file_count,
+                                proj.token_estimate
+                            );
                         }
                         Err(e) => nv::print_error(&format!("clone failed: {}", e)),
                     }
@@ -1236,9 +1598,9 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
 
                 "/security" => {
                     let sec_cfg = Config {
-                        api_key:         config.api_key.clone(),
-                        model:           current_model.clone(),
-                        grounding:       true,
+                        api_key: config.api_key.clone(),
+                        model: current_model.clone(),
+                        grounding: true,
                         ..Config::default()
                     };
                     if let Err(e) = security::sweep(&sec_cfg).await {
@@ -1249,7 +1611,10 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                 "/screenshot" => {
                     let path = match parts.get(1).map(|s| s.trim()) {
                         Some(p) if !p.is_empty() => p,
-                        _ => { println!("Usage: /screenshot <path>"); continue; }
+                        _ => {
+                            println!("Usage: /screenshot <path>");
+                            continue;
+                        }
                     };
                     match encode_image(path) {
                         Ok((mime, data)) => {
@@ -1260,10 +1625,27 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                                     Part::image(mime, data),
                                 ],
                             });
-                            let active_cfg = active_config(config, &current_model, grounding, thinking, thinking_budget, auto_apply);
+                            let active_cfg = active_config(
+                                config,
+                                &current_model,
+                                grounding,
+                                thinking,
+                                thinking_budget,
+                                auto_apply,
+                            );
                             match BackendClient::new(&active_cfg) {
                                 Ok(active_client) => {
-                                    if let Err(e) = agentic_loop(&active_client, &mut history, &active_cfg, explain_exec, Some(mcp.clone()), Some(integrations.clone()), &mut cost_tracker).await {
+                                    if let Err(e) = agentic_loop(
+                                        &active_client,
+                                        &mut history,
+                                        &active_cfg,
+                                        explain_exec,
+                                        Some(mcp.clone()),
+                                        Some(integrations.clone()),
+                                        &mut cost_tracker,
+                                    )
+                                    .await
+                                    {
                                         nv::print_error(&e.to_string());
                                     }
                                 }
@@ -1280,12 +1662,22 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                         continue;
                     }
                     println!("{}", "Compacting conversation...".dimmed());
-                    let compact_cfg = Config { api_key: config.api_key.clone(), model: current_model.clone(), ..Config::default() };
+                    let compact_cfg = Config {
+                        api_key: config.api_key.clone(),
+                        model: current_model.clone(),
+                        ..Config::default()
+                    };
                     match compact_history(&compact_cfg, &history).await {
                         Ok(summary) => {
                             history.clear();
-                            history.push(Content { role: "user".to_string(), parts: vec![Part::text("Summary of previous conversation:")] });
-                            history.push(Content { role: "model".to_string(), parts: vec![Part::text(&summary)] });
+                            history.push(Content {
+                                role: "user".to_string(),
+                                parts: vec![Part::text("Summary of previous conversation:")],
+                            });
+                            history.push(Content {
+                                role: "model".to_string(),
+                                parts: vec![Part::text(&summary)],
+                            });
                             session_tokens = 0;
                             println!("{} Compacted ({} chars).", "[OK]".green(), summary.len());
                         }
@@ -1293,64 +1685,87 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                     }
                 }
 
-                "/session" => {
-                    match parts.get(1).map(|s| s.trim()) {
-                        Some("save") => {
-                            let name = parts.get(2).map(|s| s.trim()).unwrap_or("default");
-                            match session::save_session(name, &history, &current_model, grounding, thinking, thinking_budget) {
-                                Ok(_) => println!("  Session '{}' saved ({} turns).", name.cyan(), history.len()),
-                                Err(e) => println!("  Save failed: {}", e),
-                            }
-                        }
-                        Some("load") => {
-                            let name = parts.get(2).map(|s| s.trim()).unwrap_or("default");
-                            match session::load_session(name) {
-                                Ok(s) => {
-                                    history = s.history;
-                                    current_model = s.model;
-                                    grounding = s.grounding;
-                                    thinking = s.thinking;
-                                    thinking_budget = s.thinking_budget;
-                                    session_tokens = 0;
-                                    cost_tracker = CostTracker::new(&current_model, config.daily_budget_usd);
-                                    println!("  Session '{}' loaded ({} turns).", name.cyan(), history.len());
-                                }
-                                Err(e) => println!("  Load failed: {}", e),
-                            }
-                        }
-                        Some("list") | Some("ls") => {
-                            let sessions = session::list_sessions();
-                            if sessions.is_empty() {
-                                println!("  No saved sessions.");
-                            } else {
-                                for s in sessions {
-                                    println!("  {}  {}  {} turns  {}KB", s.name.cyan(), s.created.dimmed(), s.turns, s.size_bytes / 1024);
-                                }
-                            }
-                        }
-                        Some("delete") | Some("rm") => {
-                            if let Some(name) = parts.get(2).map(|s| s.trim()) {
-                                match session::delete_session(name) {
-                                    Ok(_) => println!("  Session '{}' deleted.", name.cyan()),
-                                    Err(e) => println!("  Delete failed: {}", e),
-                                }
-                            } else {
-                                println!("Usage: /session delete <name>");
-                            }
-                        }
-                        _ => {
-                            println!("  /session save <name>  — save session to disk");
-                            println!("  /session load <name>  — restore saved session");
-                            println!("  /session list         — list saved sessions");
-                            println!("  /session delete <name> — remove a saved session");
+                "/session" => match parts.get(1).map(|s| s.trim()) {
+                    Some("save") => {
+                        let name = parts.get(2).map(|s| s.trim()).unwrap_or("default");
+                        match session::save_session(
+                            name,
+                            &history,
+                            &current_model,
+                            grounding,
+                            thinking,
+                            thinking_budget,
+                        ) {
+                            Ok(_) => println!(
+                                "  Session '{}' saved ({} turns).",
+                                name.cyan(),
+                                history.len()
+                            ),
+                            Err(e) => println!("  Save failed: {}", e),
                         }
                     }
-                }
+                    Some("load") => {
+                        let name = parts.get(2).map(|s| s.trim()).unwrap_or("default");
+                        match session::load_session(name) {
+                            Ok(s) => {
+                                history = s.history;
+                                current_model = s.model;
+                                grounding = s.grounding;
+                                thinking = s.thinking;
+                                thinking_budget = s.thinking_budget;
+                                session_tokens = 0;
+                                cost_tracker =
+                                    CostTracker::new(&current_model, config.daily_budget_usd);
+                                println!(
+                                    "  Session '{}' loaded ({} turns).",
+                                    name.cyan(),
+                                    history.len()
+                                );
+                            }
+                            Err(e) => println!("  Load failed: {}", e),
+                        }
+                    }
+                    Some("list") | Some("ls") => {
+                        let sessions = session::list_sessions();
+                        if sessions.is_empty() {
+                            println!("  No saved sessions.");
+                        } else {
+                            for s in sessions {
+                                println!(
+                                    "  {}  {}  {} turns  {}KB",
+                                    s.name.cyan(),
+                                    s.created.dimmed(),
+                                    s.turns,
+                                    s.size_bytes / 1024
+                                );
+                            }
+                        }
+                    }
+                    Some("delete") | Some("rm") => {
+                        if let Some(name) = parts.get(2).map(|s| s.trim()) {
+                            match session::delete_session(name) {
+                                Ok(_) => println!("  Session '{}' deleted.", name.cyan()),
+                                Err(e) => println!("  Delete failed: {}", e),
+                            }
+                        } else {
+                            println!("Usage: /session delete <name>");
+                        }
+                    }
+                    _ => {
+                        println!("  /session save <name>  — save session to disk");
+                        println!("  /session load <name>  — restore saved session");
+                        println!("  /session list         — list saved sessions");
+                        println!("  /session delete <name> — remove a saved session");
+                    }
+                },
 
                 "/save" => {
-                    let filename = parts.get(1).map(|s| s.trim()).unwrap_or("dipralix-session.md");
+                    let filename = parts
+                        .get(1)
+                        .map(|s| s.trim())
+                        .unwrap_or("dipralix-session.md");
                     match save_session(filename, &history) {
-                        Ok(_)  => println!("{} '{}'", "Saved session to".green(), filename),
+                        Ok(_) => println!("{} '{}'", "Saved session to".green(), filename),
                         Err(e) => nv::print_error(&format!("Save failed: {}", e)),
                     }
                 }
@@ -1368,24 +1783,49 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
         // Auto-routing: select best model based on task complexity
         let effective_model = if current_model == "auto" {
             let (model, reason) = auto_route_model(config, &message_text);
-            println!("  {} routed to {} — {}", "[AUTO]".cyan(), model.yellow(), reason.dimmed());
+            println!(
+                "  {} routed to {} — {}",
+                "[AUTO]".cyan(),
+                model.yellow(),
+                reason.dimmed()
+            );
             model.to_string()
         } else {
             current_model.clone()
         };
 
         history.push(Content {
-            role:  "user".to_string(),
+            role: "user".to_string(),
             parts: vec![Part::text(message_text)],
         });
 
-        let active_cfg = active_config(config, &effective_model, grounding, thinking, thinking_budget, auto_apply);
+        let active_cfg = active_config(
+            config,
+            &effective_model,
+            grounding,
+            thinking,
+            thinking_budget,
+            auto_apply,
+        );
         let active_client = match BackendClient::new(&active_cfg) {
             Ok(c) => c,
-            Err(e) => { nv::print_error(&e.to_string()); continue; }
+            Err(e) => {
+                nv::print_error(&e.to_string());
+                continue;
+            }
         };
 
-        match agentic_loop(&active_client, &mut history, &active_cfg, explain_exec, Some(mcp.clone()), Some(integrations.clone()), &mut cost_tracker).await {
+        match agentic_loop(
+            &active_client,
+            &mut history,
+            &active_cfg,
+            explain_exec,
+            Some(mcp.clone()),
+            Some(integrations.clone()),
+            &mut cost_tracker,
+        )
+        .await
+        {
             Ok(tokens) => {
                 session_tokens = session_tokens.saturating_add(tokens);
                 let window = config::context_window(&current_model);
@@ -1425,7 +1865,14 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                     }
                 }
                 // Auto-save session after successful turns
-                let _ = session::save_session("auto", &history, &current_model, grounding, thinking, thinking_budget);
+                let _ = session::save_session(
+                    "auto",
+                    &history,
+                    &current_model,
+                    grounding,
+                    thinking,
+                    thinking_budget,
+                );
 
                 if debug {
                     println!("  {} session tokens: {}", "dbg".dimmed(), session_tokens);
@@ -1440,46 +1887,46 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
 }
 
 fn active_config(
-    base:           &Config,
-    model:          &str,
-    grounding:      bool,
-    thinking:       bool,
+    base: &Config,
+    model: &str,
+    grounding: bool,
+    thinking: bool,
     thinking_budget: i32,
-    auto_apply:     bool,
+    auto_apply: bool,
 ) -> Config {
     Config {
-        api_key:         base.api_key.clone(),
-        model:           model.to_string(),
+        api_key: base.api_key.clone(),
+        model: model.to_string(),
         grounding,
         thinking,
         thinking_budget,
         auto_apply,
-        max_iterations:  base.max_iterations,
-        context_warn:    base.context_warn,
+        max_iterations: base.max_iterations,
+        context_warn: base.context_warn,
         context_compact: base.context_compact,
-        mcp_servers:     base.mcp_servers.clone(),
-        integrations:    base.integrations.clone(),
+        mcp_servers: base.mcp_servers.clone(),
+        integrations: base.integrations.clone(),
         daily_budget_usd: base.daily_budget_usd,
         anthropic_api_key: base.anthropic_api_key.clone(),
         openai_api_key: base.openai_api_key.clone(),
         explain_before_execute: base.explain_before_execute,
         api_base: None,
-            domain: None,
+        domain: None,
     }
 }
 
 // ── Core agentic loop — returns total prompt tokens consumed ──────────────────
 
 async fn agentic_loop(
-    client:  &BackendClient,
+    client: &BackendClient,
     history: &mut Vec<Content>,
-    config:  &Config,
+    config: &Config,
     explain_exec: bool,
     mcp: Option<Arc<McpRegistry>>,
     integrations: Option<Arc<IntegrationRegistry>>,
     cost_tracker: &mut CostTracker,
 ) -> Result<u32> {
-    let sys         = system_prompt(config);
+    let sys = system_prompt(config);
     let mut total_prompt_tokens = 0u32;
     let mut iterations = 0u32;
     let mut last_error: String = String::new();
@@ -1523,17 +1970,22 @@ async fn agentic_loop(
         nv::print_thinking(&config.model);
 
         let request = GenerateContentRequest {
-            contents:           history.clone(),
-            tools:              build_tools(config.grounding, mcp.as_deref(), integrations.as_deref()),
-            tool_config:        Some(build_tool_config()),
-            system_instruction: Some(SystemContent { parts: vec![Part::text(&sys)] }),
-            generation_config:  Some(build_generation_config(config.thinking, config.thinking_budget)),
+            contents: history.clone(),
+            tools: build_tools(config.grounding, mcp.as_deref(), integrations.as_deref()),
+            tool_config: Some(build_tool_config()),
+            system_instruction: Some(SystemContent {
+                parts: vec![Part::text(&sys)],
+            }),
+            generation_config: Some(build_generation_config(
+                config.thinking,
+                config.thinking_budget,
+            )),
         };
 
         // ── Streaming with auto-fallback ────────────────────────────────────
-        let first_text     = std::cell::Cell::new(true);
+        let first_text = std::cell::Cell::new(true);
         let thought_active = std::cell::Cell::new(false);
-        let thought_buf    = std::cell::RefCell::new(String::new());
+        let thought_buf = std::cell::RefCell::new(String::new());
 
         let mut on_thought = |chunk: &str| {
             if !thought_active.get() {
@@ -1553,7 +2005,9 @@ async fn agentic_loop(
                             nv::print_thinking_line(&current);
                             current = w.to_string();
                         } else {
-                            if !current.is_empty() { current.push(' '); }
+                            if !current.is_empty() {
+                                current.push(' ');
+                            }
                             current.push_str(w);
                         }
                     }
@@ -1577,7 +2031,9 @@ async fn agentic_loop(
                 nv::print_thinking_close();
                 thought_active.set(false);
             }
-            if first_text.get() { first_text.set(false); }
+            if first_text.get() {
+                first_text.set(false);
+            }
             print!("{}", chunk);
             let _ = std::io::stdout().flush();
         };
@@ -1603,13 +2059,20 @@ async fn agentic_loop(
                 Ok(resp) => break resp,
                 Err(e) => {
                     let err_str = e.to_string();
-                    let is_rate_limited = err_str.contains("429") || err_str.contains("RESOURCE_EXHAUSTED")
-                        || err_str.contains("rate") || err_str.contains("quota");
-                    let is_auth_error = err_str.contains("401") || err_str.contains("403")
-                        || err_str.contains("UNAUTHENTICATED") || err_str.contains("PERMISSION_DENIED");
-                    let is_retryable = is_rate_limited || is_auth_error
-                        || err_str.contains("500") || err_str.contains("503")
-                        || err_str.contains("UNAVAILABLE") || err_str.contains("INTERNAL");
+                    let is_rate_limited = err_str.contains("429")
+                        || err_str.contains("RESOURCE_EXHAUSTED")
+                        || err_str.contains("rate")
+                        || err_str.contains("quota");
+                    let is_auth_error = err_str.contains("401")
+                        || err_str.contains("403")
+                        || err_str.contains("UNAUTHENTICATED")
+                        || err_str.contains("PERMISSION_DENIED");
+                    let is_retryable = is_rate_limited
+                        || is_auth_error
+                        || err_str.contains("500")
+                        || err_str.contains("503")
+                        || err_str.contains("UNAVAILABLE")
+                        || err_str.contains("INTERNAL");
 
                     if fallback_attempt >= max_fallbacks || !is_retryable {
                         return Err(e);
@@ -1626,7 +2089,11 @@ async fn agentic_loop(
                         "  {} Model {} {} — switching to {}",
                         "[FALLBACK]".yellow(),
                         current_model.as_ref().dimmed(),
-                        if is_rate_limited { "rate limited".red() } else { "failed".red() },
+                        if is_rate_limited {
+                            "rate limited".red()
+                        } else {
+                            "failed".red()
+                        },
                         new_model.bright_green()
                     );
 
@@ -1653,19 +2120,31 @@ async fn agentic_loop(
         let first_text = first_text.get();
 
         // ── Parse candidate ───────────────────────────────────────────────────
-        let candidate = response.candidates
-            .and_then(|mut c| if c.is_empty() { None } else { Some(c.remove(0)) })
+        let candidate = response
+            .candidates
+            .and_then(|mut c| {
+                if c.is_empty() {
+                    None
+                } else {
+                    Some(c.remove(0))
+                }
+            })
             .ok_or_else(|| anyhow::anyhow!("Gemini returned no candidates"))?;
 
-        let content = candidate.content
+        let content = candidate
+            .content
             .ok_or_else(|| anyhow::anyhow!("Candidate has no content"))?;
 
-        let mut text_chunks:    Vec<String>       = Vec::new();
+        let mut text_chunks: Vec<String> = Vec::new();
         let mut function_calls: Vec<FunctionCall> = Vec::new();
 
         for part in &content.parts {
             match part {
-                Part::Text { text, thought: None | Some(false), .. } if !text.trim().is_empty() => {
+                Part::Text {
+                    text,
+                    thought: None | Some(false),
+                    ..
+                } if !text.trim().is_empty() => {
                     text_chunks.push(text.clone());
                 }
                 Part::FunctionCall { function_call, .. } => {
@@ -1686,12 +2165,20 @@ async fn agentic_loop(
         }
 
         if let Some(usage) = response.usage_metadata {
-            let p  = usage.prompt_token_count.unwrap_or(0);
-            let c  = usage.candidates_token_count.unwrap_or(0);
-            let t  = usage.total_token_count.unwrap_or(0);
+            let p = usage.prompt_token_count.unwrap_or(0);
+            let c = usage.candidates_token_count.unwrap_or(0);
+            let t = usage.total_token_count.unwrap_or(0);
             let th = usage.thoughts_token_count.unwrap_or(0);
             if t > 0 {
-                nv::print_token_stats(p, c, t, cost_tracker.session_cost(), total_prompt_tokens/1000, 0, cost_tracker.turn_count as u32);
+                nv::print_token_stats(
+                    p,
+                    c,
+                    t,
+                    cost_tracker.session_cost(),
+                    total_prompt_tokens / 1000,
+                    0,
+                    cost_tracker.turn_count as u32,
+                );
                 total_prompt_tokens = total_prompt_tokens.saturating_add(t);
                 cost_tracker.record_usage(p, c, th);
 
@@ -1705,7 +2192,9 @@ async fn agentic_loop(
                 if total_pct >= 0.85 {
                     println!(
                         "  {} Context at {:.0}% — run {} now to avoid truncation",
-                        "[CRITICAL]".red(), total_pct * 100.0, "/compact".yellow()
+                        "[CRITICAL]".red(),
+                        total_pct * 100.0,
+                        "/compact".yellow()
                     );
                 }
             }
@@ -1714,7 +2203,9 @@ async fn agentic_loop(
         if function_calls.is_empty() {
             // Task complete — show summary if changes were made
             let has_changes = history.iter().any(|c| {
-                c.parts.iter().any(|p| matches!(p, Part::FunctionCall { .. }))
+                c.parts
+                    .iter()
+                    .any(|p| matches!(p, Part::FunctionCall { .. }))
             });
             if has_changes {
                 println!("  {} Task complete.", "DONE".green());
@@ -1727,7 +2218,9 @@ async fn agentic_loop(
 
         // ── Explain-before-execute ──────────────────────────────────────────
         if explain_exec && !function_calls.is_empty() && !config.auto_apply {
-            let short_model = config.model.trim_start_matches("models/")
+            let short_model = config
+                .model
+                .trim_start_matches("models/")
                 .split('-')
                 .filter(|s| !s.is_empty())
                 .take(3)
@@ -1735,12 +2228,22 @@ async fn agentic_loop(
                 .join("-");
             println!();
             println!("  ╔══════════════════════════════════════╗");
-            println!("  ║  {} {} {} ║", "◈ PLAN".cyan().bold(), "—".dimmed(), short_model.bright_blue());
+            println!(
+                "  ║  {} {} {} ║",
+                "◈ PLAN".cyan().bold(),
+                "—".dimmed(),
+                short_model.bright_blue()
+            );
             println!("  ╠══════════════════════════════════════╣");
             for (i, fc) in function_calls.iter().enumerate() {
                 let args_summary = fmt_args_compact(&fc.args);
                 let num = i + 1;
-                println!("  ║  {} {}  {}", num.to_string().cyan(), fc.name.yellow().bold(), " ".to_string());
+                println!(
+                    "  ║  {} {}  {}",
+                    num.to_string().cyan(),
+                    fc.name.yellow().bold(),
+                    " ".to_string()
+                );
                 if !args_summary.is_empty() {
                     let truncated = if args_summary.len() > 30 {
                         format!("{}…", &args_summary[..27])
@@ -1780,9 +2283,18 @@ async fn agentic_loop(
                 if let Some(cmd) = fc.args.get("command").and_then(|v| v.as_str()) {
                     let risk = safety::classify(cmd);
                     if risk == safety::RiskLevel::Confirm || risk == safety::RiskLevel::Deny {
-                        let engine = crate::debate::PeerReviewEngine::new(std::sync::Arc::new(client.clone()), config.clone());
+                        let engine = crate::debate::PeerReviewEngine::new(
+                            std::sync::Arc::new(client.clone()),
+                            config.clone(),
+                        );
                         // Assemble context: last 3 turns
-                        let ctx_str = history.iter().rev().take(3).map(|c| c.role.clone()).collect::<Vec<_>>().join("\n");
+                        let ctx_str = history
+                            .iter()
+                            .rev()
+                            .take(3)
+                            .map(|c| c.role.clone())
+                            .collect::<Vec<_>>()
+                            .join("\n");
                         if let Ok(decision) = engine.review_action(cmd, risk, &ctx_str).await {
                             if decision.contains("REJECT") {
                                 nv::print_warning(&format!("Peer Review REJECTED: {}", cmd));
@@ -1804,18 +2316,23 @@ async fn agentic_loop(
         }
 
         let solo_bash = approved_calls.len() == 1 && approved_calls[0].name == "bash";
-        let auto_ap   = config.auto_apply;
+        let auto_ap = config.auto_apply;
 
         let handles: Vec<_> = approved_calls
             .into_iter()
             .map(|fc| {
-                let name   = fc.name.clone();
-                let args   = fc.args.clone();
+                let name = fc.name.clone();
+                let args = fc.args.clone();
                 let stream = solo_bash;
                 let mcp_opt = mcp.clone();
                 let integ_opt = integrations.clone();
                 tokio::spawn(async move {
-                    let ctx = ToolContext { stream_output: stream, auto_apply: auto_ap, mcp: mcp_opt, integrations: integ_opt };
+                    let ctx = ToolContext {
+                        stream_output: stream,
+                        auto_apply: auto_ap,
+                        mcp: mcp_opt,
+                        integrations: integ_opt,
+                    };
                     let result = tools::execute_tool(&name, &args, &ctx).await;
                     (name, args, result)
                 })
@@ -1827,7 +2344,9 @@ async fn agentic_loop(
             nv::print_tool_call(&name, &fmt_args(&args));
 
             if result.was_streamed {
-                if result.is_error { nv::print_tool_result(false, "(see output above)"); }
+                if result.is_error {
+                    nv::print_tool_result(false, "(see output above)");
+                }
             } else if result.is_error {
                 nv::print_tool_result(false, &result.output);
             } else {
@@ -1846,7 +2365,11 @@ async fn agentic_loop(
 
             // Track for progress detection
             if result.is_error {
-                let err_fingerprint = format!("{}: {}", tool_name, result.output.chars().take(60).collect::<String>());
+                let err_fingerprint = format!(
+                    "{}: {}",
+                    tool_name,
+                    result.output.chars().take(60).collect::<String>()
+                );
                 if err_fingerprint == last_error {
                     consecutive_same_error += 1;
                 } else {
@@ -1864,7 +2387,10 @@ async fn agentic_loop(
             }
         }
 
-        history.push(Content { role: "user".to_string(), parts: response_parts });
+        history.push(Content {
+            role: "user".to_string(),
+            parts: response_parts,
+        });
     }
 
     Ok(total_prompt_tokens)
@@ -1877,7 +2403,8 @@ async fn auto_pr(description: &str) {
 
     let check = tokio::process::Command::new("git")
         .args(["rev-parse", "--is-inside-work-tree"])
-        .output().await;
+        .output()
+        .await;
 
     if check.map(|o| !o.status.success()).unwrap_or(true) {
         nv::print_error("Not inside a git repository.");
@@ -1886,16 +2413,22 @@ async fn auto_pr(description: &str) {
 
     let branch_out = tokio::process::Command::new("git")
         .args(["branch", "--show-current"])
-        .output().await;
+        .output()
+        .await;
     let branch = branch_out
         .ok()
         .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
         .unwrap_or_else(|| "HEAD".to_string());
 
-    println!("{} Pushing branch '{}'...", "[BUSY]".bright_yellow(), branch);
+    println!(
+        "{} Pushing branch '{}'...",
+        "[BUSY]".bright_yellow(),
+        branch
+    );
     let push = tokio::process::Command::new("git")
         .args(["push", "-u", "origin", &branch])
-        .output().await;
+        .output()
+        .await;
 
     if let Ok(p) = &push {
         if !p.status.success() {
@@ -1911,7 +2444,8 @@ async fn auto_pr(description: &str) {
 
     match tokio::process::Command::new("gh")
         .args(["pr", "create", "--title", description, "--body", &body])
-        .output().await
+        .output()
+        .await
     {
         Ok(o) if o.status.success() => {
             let url = String::from_utf8_lossy(&o.stdout).trim().to_string();
@@ -1922,7 +2456,10 @@ async fn auto_pr(description: &str) {
             nv::print_error(&format!("gh pr create failed: {}", err.trim()));
         }
         Err(e) => {
-            nv::print_error(&format!("gh CLI not found ({}). Install: https://cli.github.com", e));
+            nv::print_error(&format!(
+                "gh CLI not found ({}). Install: https://cli.github.com",
+                e
+            ));
         }
     }
 }
@@ -1930,13 +2467,30 @@ async fn auto_pr(description: &str) {
 // ── /compact ──────────────────────────────────────────────────────────────────
 
 async fn compact_history(config: &Config, history: &[Content]) -> Result<String> {
-    let transcript: String = history.iter().map(|msg| {
-        let role = if msg.role == "user" { "User" } else { "Assistant" };
-        let text: String = msg.parts.iter().filter_map(|p| {
-            if let Part::Text { text, .. } = p { Some(text.as_str()) } else { None }
-        }).collect::<Vec<_>>().join(" ");
-        format!("{}: {}", role, text)
-    }).collect::<Vec<_>>().join("\n\n");
+    let transcript: String = history
+        .iter()
+        .map(|msg| {
+            let role = if msg.role == "user" {
+                "User"
+            } else {
+                "Assistant"
+            };
+            let text: String = msg
+                .parts
+                .iter()
+                .filter_map(|p| {
+                    if let Part::Text { text, .. } = p {
+                        Some(text.as_str())
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(" ");
+            format!("{}: {}", role, text)
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n");
 
     let prompt = format!(
         "Produce a dense technical summary of this conversation. \
@@ -1945,11 +2499,14 @@ async fn compact_history(config: &Config, history: &[Content]) -> Result<String>
         transcript
     );
 
-    let client  = BackendClient::new(config)?;
+    let client = BackendClient::new(config)?;
     let request = GenerateContentRequest {
-        contents: vec![Content { role: "user".to_string(), parts: vec![Part::text(&prompt)] }],
-        tools:    vec![],
-        tool_config:        None,
+        contents: vec![Content {
+            role: "user".to_string(),
+            parts: vec![Part::text(&prompt)],
+        }],
+        tools: vec![],
+        tool_config: None,
         system_instruction: None,
         generation_config: Some(GenerationConfig {
             temperature: Some(0.3),
@@ -1959,11 +2516,18 @@ async fn compact_history(config: &Config, history: &[Content]) -> Result<String>
     };
 
     let resp = client.generate(request).await?;
-    resp.candidates.and_then(|mut c| c.pop())
+    resp.candidates
+        .and_then(|mut c| c.pop())
         .and_then(|c| c.content)
-        .and_then(|c| c.parts.into_iter().find_map(|p| {
-            if let Part::Text { text, .. } = p { Some(text) } else { None }
-        }))
+        .and_then(|c| {
+            c.parts.into_iter().find_map(|p| {
+                if let Part::Text { text, .. } = p {
+                    Some(text)
+                } else {
+                    None
+                }
+            })
+        })
         .ok_or_else(|| anyhow::anyhow!("No summary returned"))
 }
 
@@ -1972,12 +2536,22 @@ async fn compact_history(config: &Config, history: &[Content]) -> Result<String>
 fn save_session(filename: &str, history: &[Content]) -> Result<()> {
     let mut out = String::from("# DIPRALIX Session\n\n");
     for msg in history {
-        out.push_str(if msg.role == "user" { "## You\n" } else { "## DIPRALIX\n" });
+        out.push_str(if msg.role == "user" {
+            "## You\n"
+        } else {
+            "## DIPRALIX\n"
+        });
         for part in &msg.parts {
             match part {
-                Part::Text { text, .. } => { out.push_str(text); out.push('\n'); }
+                Part::Text { text, .. } => {
+                    out.push_str(text);
+                    out.push('\n');
+                }
                 Part::FunctionCall { function_call, .. } => {
-                    out.push_str(&format!("\n**Tool:** `{}` `{}`\n", function_call.name, function_call.args));
+                    out.push_str(&format!(
+                        "\n**Tool:** `{}` `{}`\n",
+                        function_call.name, function_call.args
+                    ));
                 }
                 Part::FunctionResponse { function_response } => {
                     out.push_str(&format!("\n**Result:** `{}`\n", function_response.response));
@@ -1996,13 +2570,19 @@ fn save_session(filename: &str, history: &[Content]) -> Result<()> {
 fn encode_image(path: &str) -> Result<(String, String)> {
     use base64::Engine as _;
     let bytes = std::fs::read(path)?;
-    let mime = match path.rsplit('.').next().unwrap_or("").to_lowercase().as_str() {
+    let mime = match path
+        .rsplit('.')
+        .next()
+        .unwrap_or("")
+        .to_lowercase()
+        .as_str()
+    {
         "jpg" | "jpeg" => "image/jpeg",
-        "png"          => "image/png",
-        "gif"          => "image/gif",
-        "webp"         => "image/webp",
-        "bmp"          => "image/bmp",
-        _              => "image/jpeg",
+        "png" => "image/png",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "bmp" => "image/bmp",
+        _ => "image/jpeg",
     };
     let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
     Ok((mime.to_string(), b64))
@@ -2011,37 +2591,54 @@ fn encode_image(path: &str) -> Result<(String, String)> {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 fn fmt_args(args: &serde_json::Value) -> String {
-    let Some(obj) = args.as_object() else { return args.to_string() };
-    obj.iter().map(|(k, v)| {
-        let val = match v {
-            serde_json::Value::String(s) => {
-                let s = s.replace('\n', "↵");
-                if s.chars().count() > 60 {
-                    format!("{}…", s.chars().take(60).collect::<String>())
-                } else { s }
-            }
-            _ => v.to_string(),
-        };
-        format!("{}={}", k, val)
-    }).collect::<Vec<_>>().join("  ")
+    let Some(obj) = args.as_object() else {
+        return args.to_string();
+    };
+    obj.iter()
+        .map(|(k, v)| {
+            let val = match v {
+                serde_json::Value::String(s) => {
+                    let s = s.replace('\n', "↵");
+                    if s.chars().count() > 60 {
+                        format!("{}…", s.chars().take(60).collect::<String>())
+                    } else {
+                        s
+                    }
+                }
+                _ => v.to_string(),
+            };
+            format!("{}={}", k, val)
+        })
+        .collect::<Vec<_>>()
+        .join("  ")
 }
 
 fn fmt_args_compact(args: &serde_json::Value) -> String {
-    let Some(obj) = args.as_object() else { return args.to_string() };
-    let parts: Vec<String> = obj.iter().take(3).map(|(k, v)| {
-        let val = match v {
-            serde_json::Value::String(s) => {
-                let s = s.replace('\n', "↵");
-                if s.chars().count() > 40 {
-                    format!("{}…", s.chars().take(40).collect::<String>())
-                } else { s }
-            }
-            _ => v.to_string(),
-        };
-        format!("{}={}", k, val)
-    }).collect();
+    let Some(obj) = args.as_object() else {
+        return args.to_string();
+    };
+    let parts: Vec<String> = obj
+        .iter()
+        .take(3)
+        .map(|(k, v)| {
+            let val = match v {
+                serde_json::Value::String(s) => {
+                    let s = s.replace('\n', "↵");
+                    if s.chars().count() > 40 {
+                        format!("{}…", s.chars().take(40).collect::<String>())
+                    } else {
+                        s
+                    }
+                }
+                _ => v.to_string(),
+            };
+            format!("{}={}", k, val)
+        })
+        .collect();
     let mut s = parts.join(" ");
-    if obj.len() > 3 { s.push_str(" …"); }
+    if obj.len() > 3 {
+        s.push_str(" …");
+    }
     s
 }
 
@@ -2068,19 +2665,55 @@ fn auto_route_model(config: &Config, message: &str) -> (&'static str, &'static s
 
     // Complexity signals — high → reasoning model
     let complex_signals = [
-        "refactor", "architecture", "migrate", "rewrite", "redesign",
-        "security audit", "vulnerability", "optimize", "scale", "multi-thread",
-        "async", "concurrent", "race condition", "deadlock", "memory leak",
-        "design pattern", "microservice", "distributed", "database schema",
-        "api design", "system design", "protocol", "encryption", "auth",
-        "jwt", "oauth", "deploy", "ci/cd", "pipeline",
+        "refactor",
+        "architecture",
+        "migrate",
+        "rewrite",
+        "redesign",
+        "security audit",
+        "vulnerability",
+        "optimize",
+        "scale",
+        "multi-thread",
+        "async",
+        "concurrent",
+        "race condition",
+        "deadlock",
+        "memory leak",
+        "design pattern",
+        "microservice",
+        "distributed",
+        "database schema",
+        "api design",
+        "system design",
+        "protocol",
+        "encryption",
+        "auth",
+        "jwt",
+        "oauth",
+        "deploy",
+        "ci/cd",
+        "pipeline",
     ];
 
     // Simple signals — low → fast/cheap model
     let simple_signals = [
-        "what is", "how do", "explain", "show me", "list", "find",
-        "read", "check", "describe", "tell me", "lookup", "where is",
-        "document", "search for", "grep", "locate",
+        "what is",
+        "how do",
+        "explain",
+        "show me",
+        "list",
+        "find",
+        "read",
+        "check",
+        "describe",
+        "tell me",
+        "lookup",
+        "where is",
+        "document",
+        "search for",
+        "grep",
+        "locate",
     ];
 
     let complexity = if complex_signals.iter().any(|s| lower.contains(s)) {
@@ -2092,13 +2725,22 @@ fn auto_route_model(config: &Config, message: &str) -> (&'static str, &'static s
     };
 
     // Pick the best available model
-    let has_anthropic = config.anthropic_api_key.as_deref().is_some_and(|k| !k.is_empty());
-    let has_openai = config.openai_api_key.as_deref().is_some_and(|k| !k.is_empty());
+    let has_anthropic = config
+        .anthropic_api_key
+        .as_deref()
+        .is_some_and(|k| !k.is_empty());
+    let has_openai = config
+        .openai_api_key
+        .as_deref()
+        .is_some_and(|k| !k.is_empty());
 
     match complexity {
         "high" => {
             if has_anthropic {
-                ("claude-4-sonnet", "complex task → Claude balanced reasoning")
+                (
+                    "claude-4-sonnet",
+                    "complex task → Claude balanced reasoning",
+                )
             } else if has_openai {
                 ("o3", "complex task → OpenAI reasoning")
             } else {
@@ -2143,12 +2785,16 @@ async fn test_fix_loop(
     for cycle in 1..=max_cycles {
         println!(
             "\n  {} Test-fix cycle {}/{} — running '{}'...",
-            "[TEST]".cyan(), cycle, max_cycles, test_command.dimmed()
+            "[TEST]".cyan(),
+            cycle,
+            max_cycles,
+            test_command.dimmed()
         );
 
         let output = tokio::process::Command::new("sh")
             .args(["-c", test_command])
-            .output().await;
+            .output()
+            .await;
 
         match &output {
             Ok(o) if o.status.success() => {
@@ -2172,7 +2818,10 @@ async fn test_fix_loop(
                     combined.clone()
                 };
 
-                println!("  {} Tests FAILED. Feeding errors to model...", "[FAIL]".red());
+                println!(
+                    "  {} Tests FAILED. Feeding errors to model...",
+                    "[FAIL]".red()
+                );
 
                 let prompt = format!(
                     "The test command '{}' failed. Here is the output:\n\n```\n{}\n```\n\n\
@@ -2191,7 +2840,16 @@ async fn test_fix_loop(
                     parts: vec![Part::text(&prompt)],
                 });
 
-                let tokens = agentic_loop(client, history, config, false, mcp.clone(), integrations.clone(), cost_tracker).await?;
+                let tokens = agentic_loop(
+                    client,
+                    history,
+                    config,
+                    false,
+                    mcp.clone(),
+                    integrations.clone(),
+                    cost_tracker,
+                )
+                .await?;
                 let _ = tokens;
             }
             Err(e) => {
@@ -2203,7 +2861,8 @@ async fn test_fix_loop(
 
     println!(
         "\n  {} Test-fix loop ended after {} cycles — tests still failing.",
-        "[WARN]".yellow(), max_cycles
+        "[WARN]".yellow(),
+        max_cycles
     );
     Ok(())
 }

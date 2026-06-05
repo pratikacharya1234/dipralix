@@ -8,11 +8,11 @@ pub fn print_context_bar(used_tokens: u32, window_size: u32) {
     }
     let pct = (used_tokens as f32 / window_size as f32).min(1.0);
     let filled = (pct * 28.0) as usize;
-    let empty  = 28usize.saturating_sub(filled);
-    let bar_f  = "█".repeat(filled);
-    let bar_e  = "░".repeat(empty);
-    let pct_s  = format!("{:.0}%", pct * 100.0);
-    let win_s  = format!("{}M", window_size / 1_000_000);
+    let empty = 28usize.saturating_sub(filled);
+    let bar_f = "█".repeat(filled);
+    let bar_e = "░".repeat(empty);
+    let pct_s = format!("{:.0}%", pct * 100.0);
+    let win_s = format!("{}M", window_size / 1_000_000);
 
     if pct >= 0.90 {
         println!(
@@ -66,9 +66,9 @@ pub fn print_context_warning(pct: f32) {
 
 /// All three `live_*` slices are optional — pass `None` to fall back to built-in lists.
 pub fn print_help(
-    live_gemini:  Option<&[(String, String)]>,
-    live_claude:  Option<&[(String, String)]>,
-    live_openai:  Option<&[(String, String)]>,
+    live_gemini: Option<&[(String, String)]>,
+    live_claude: Option<&[(String, String)]>,
+    live_openai: Option<&[(String, String)]>,
 ) {
     fn section(title: &str) {
         // "  ── TITLE ──...──" filling to col 80
@@ -87,47 +87,56 @@ pub fn print_help(
     section("COMMANDS");
 
     let cmds: &[(&str, &str)] = &[
-        ("/quit  /exit  /q",              "exit DIPRALIX"),
-        ("/clear",                         "clear conversation history"),
-        ("",                               ""),
-        ("/model <name|auto|list|info>",   "switch model, list all providers, or view info"),
-        ("/models",                        "fetch live model list from Gemini API"),
-        ("/think [on|off|budget=N]",       "toggle extended reasoning mode"),
-        ("/web",                           "toggle Google Search grounding"),
-        ("/apply [on|off]",                "toggle auto-apply (skip diff review)"),
-        ("/explain [on|off]",              "preview planned actions before executing"),
-        ("",                               ""),
-        ("/task <requirement>",            "research → decompose → dispatch → consensus"),
-        ("/test-fix <cmd> [cycles]",       "test → fix → retest loop"),
-        ("/pr <title>",                    "push branch and open GitHub PR"),
-        ("/compact",                       "summarize history to reclaim context"),
-        ("/undo [N]",                      "revert last N file changes"),
-        ("/snapshot [label]",              "create git stash snapshot"),
-        ("/rollback",                      "restore from last git stash"),
-        ("/diff",                          "list pending file snapshots"),
-        ("",                               ""),
-        ("/memorize <fact>",               "save fact to persistent memory"),
-        ("/forget <keyword>",              "remove matching memory entries"),
-        ("/memory",                        "view all memorized facts"),
-        ("/learnings",                     "view auto-learned error patterns"),
-        ("/dna",                           "show auto-detected project conventions"),
-        ("",                               ""),
-        ("/load [path]",                   "load project files into context"),
-        ("/learn <git-url>",               "clone and load any OSS repo"),
-        ("/tokens",                        "show context window usage"),
-        ("/cost",                          "show session token costs and daily budget"),
-        ("",                               ""),
-        ("/session save|load|list|del",    "manage named sessions"),
-        ("/save [file]",                   "export conversation as Markdown"),
-        ("/history [N]",                   "show last N turns"),
-        ("",                               ""),
-        ("/security",                      "security sweep with CVE scan"),
-        ("/audit [N]",                     "show last N actions from audit log"),
-        ("/profile <name>",                "apply config profile"),
-        ("/screenshot <path>",             "vision analysis — find and fix bugs"),
-        ("/debug",                         "toggle debug output"),
-        ("/cd <dir>",                      "change working directory"),
-        ("/help",                          "show this help"),
+        ("/quit  /exit  /q", "exit DIPRALIX"),
+        ("/clear", "clear conversation history"),
+        ("", ""),
+        (
+            "/model <name|auto|list|info>",
+            "switch model, list all providers, or view info",
+        ),
+        ("/models", "fetch live model list from Gemini API"),
+        ("/think [on|off|budget=N]", "toggle extended reasoning mode"),
+        ("/web", "toggle Google Search grounding"),
+        ("/apply [on|off]", "toggle auto-apply (skip diff review)"),
+        (
+            "/explain [on|off]",
+            "preview planned actions before executing",
+        ),
+        ("", ""),
+        (
+            "/task <requirement>",
+            "research → decompose → dispatch → consensus",
+        ),
+        ("/test-fix <cmd> [cycles]", "test → fix → retest loop"),
+        ("/pr <title>", "push branch and open GitHub PR"),
+        ("/compact", "summarize history to reclaim context"),
+        ("/undo [N]", "revert last N file changes"),
+        ("/snapshot [label]", "create git stash snapshot"),
+        ("/rollback", "restore from last git stash"),
+        ("/diff", "list pending file snapshots"),
+        ("", ""),
+        ("/memorize <fact>", "save fact to persistent memory"),
+        ("/forget <keyword>", "remove matching memory entries"),
+        ("/memory", "view all memorized facts"),
+        ("/learnings", "view auto-learned error patterns"),
+        ("/dna", "show auto-detected project conventions"),
+        ("", ""),
+        ("/load [path]", "load project files into context"),
+        ("/learn <git-url>", "clone and load any OSS repo"),
+        ("/tokens", "show context window usage"),
+        ("/cost", "show session token costs and daily budget"),
+        ("", ""),
+        ("/session save|load|list|del", "manage named sessions"),
+        ("/save [file]", "export conversation as Markdown"),
+        ("/history [N]", "show last N turns"),
+        ("", ""),
+        ("/security", "security sweep with CVE scan"),
+        ("/audit [N]", "show last N actions from audit log"),
+        ("/profile <name>", "apply config profile"),
+        ("/screenshot <path>", "vision analysis — find and fix bugs"),
+        ("/debug", "toggle debug output"),
+        ("/cd <dir>", "change working directory"),
+        ("/help", "show this help"),
     ];
 
     for (cmd, desc) in cmds {
@@ -140,20 +149,28 @@ pub fn print_help(
 
     section("MODELS");
 
-    println!("  {}  {}:", "▸".bright_blue(), "Gemini".bright_white().bold());
+    println!(
+        "  {}  {}:",
+        "▸".bright_blue(),
+        "Gemini".bright_white().bold()
+    );
     if let Some(models) = live_gemini {
         // Real-time list from the API
         for (name, desc) in models {
-            println!("      {:<34} {}", name.as_str().cyan(), desc.as_str().dimmed());
+            println!(
+                "      {:<34} {}",
+                name.as_str().cyan(),
+                desc.as_str().dimmed()
+            );
         }
     } else {
         // Fallback when offline or key unavailable
         let gemini: &[(&str, &str)] = &[
-            ("gemini-3.1-pro",         "latest — 80.6% SWE-bench"),
-            ("gemini-3-flash",         "latest fast model"),
-            ("gemini-2.5-pro",         "deep reasoning, 1M context"),
-            ("gemini-2.5-flash",       "fast, recommended"),
-            ("gemini-2.5-flash-lite",  "cheapest — $0.10/M input"),
+            ("gemini-3.1-pro", "latest — 80.6% SWE-bench"),
+            ("gemini-3-flash", "latest fast model"),
+            ("gemini-2.5-pro", "deep reasoning, 1M context"),
+            ("gemini-2.5-flash", "fast, recommended"),
+            ("gemini-2.5-flash-lite", "cheapest — $0.10/M input"),
         ];
         for (m, d) in gemini {
             println!("      {:<34} {}", m.cyan(), d.dimmed());
@@ -161,15 +178,23 @@ pub fn print_help(
     }
 
     println!();
-    println!("  {}  {}:", "▸".bright_blue(), "Claude".bright_white().bold());
+    println!(
+        "  {}  {}:",
+        "▸".bright_blue(),
+        "Claude".bright_white().bold()
+    );
     if let Some(models) = live_claude {
         for (name, desc) in models {
-            println!("      {:<34} {}", name.as_str().cyan(), desc.as_str().dimmed());
+            println!(
+                "      {:<34} {}",
+                name.as_str().cyan(),
+                desc.as_str().dimmed()
+            );
         }
     } else {
         let claude: &[(&str, &str)] = &[
-            ("claude-4-opus",     "200K ctx  max reasoning"),
-            ("claude-4-sonnet",   "200K ctx  balanced"),
+            ("claude-4-opus", "200K ctx  max reasoning"),
+            ("claude-4-sonnet", "200K ctx  balanced"),
             ("claude-3.5-sonnet", "200K ctx  fast, capable"),
         ];
         for (m, d) in claude {
@@ -178,17 +203,25 @@ pub fn print_help(
     }
 
     println!();
-    println!("  {}  {}:", "▸".bright_blue(), "OpenAI".bright_white().bold());
+    println!(
+        "  {}  {}:",
+        "▸".bright_blue(),
+        "OpenAI".bright_white().bold()
+    );
     if let Some(models) = live_openai {
         for (name, desc) in models {
-            println!("      {:<34} {}", name.as_str().cyan(), desc.as_str().dimmed());
+            println!(
+                "      {:<34} {}",
+                name.as_str().cyan(),
+                desc.as_str().dimmed()
+            );
         }
     } else {
         let openai: &[(&str, &str)] = &[
-            ("gpt-4.1",  "1M ctx  strong code generation"),
-            ("gpt-4o",   "128K ctx  fast, multimodal"),
-            ("o3",       "200K ctx  advanced reasoning"),
-            ("o4-mini",  "200K ctx  reasoning, cost-efficient"),
+            ("gpt-4.1", "1M ctx  strong code generation"),
+            ("gpt-4o", "128K ctx  fast, multimodal"),
+            ("o3", "200K ctx  advanced reasoning"),
+            ("o4-mini", "200K ctx  reasoning, cost-efficient"),
         ];
         for (m, d) in openai {
             println!("      {:<34} {}", m.cyan(), d.dimmed());
@@ -205,17 +238,21 @@ pub fn print_help(
     section("SAFETY");
 
     let levels: &[(&str, &str, &str)] = &[
-        ("ALLOW  ", "green",       "safe commands run silently"),
-        ("WARN   ", "yellow",      "side-effect commands print a warning"),
-        ("CONFIRM", "bright_red",  "destructive commands require confirmation"),
-        ("DENY   ", "red",         "catastrophic commands blocked outright"),
+        ("ALLOW  ", "green", "safe commands run silently"),
+        ("WARN   ", "yellow", "side-effect commands print a warning"),
+        (
+            "CONFIRM",
+            "bright_red",
+            "destructive commands require confirmation",
+        ),
+        ("DENY   ", "red", "catastrophic commands blocked outright"),
     ];
     for (label, color, desc) in levels {
         let colored_label = match *color {
-            "green"      => label.green().bold().to_string(),
-            "yellow"     => label.yellow().bold().to_string(),
+            "green" => label.green().bold().to_string(),
+            "yellow" => label.yellow().bold().to_string(),
             "bright_red" => label.bright_red().bold().to_string(),
-            _            => label.red().bold().to_string(),
+            _ => label.red().bold().to_string(),
         };
         println!("  {}   {}", colored_label, desc.dimmed());
     }
@@ -223,19 +260,34 @@ pub fn print_help(
     section("TOOLS");
 
     println!("  {}", "File system:".bright_white());
-    println!("    {}", "read_file  write_file  edit_file  append_file  delete_file  copy_file  move_file".cyan());
+    println!(
+        "    {}",
+        "read_file  write_file  edit_file  append_file  delete_file  copy_file  move_file".cyan()
+    );
     println!();
     println!("  {}", "Search:".bright_white());
-    println!("    {}", "list_files  glob  search_files  create_directory".cyan());
+    println!(
+        "    {}",
+        "list_files  glob  search_files  create_directory".cyan()
+    );
     println!();
     println!("  {}", "Shell:".bright_white());
-    println!("    {}", "bash  (streaming output, safety-checked, timeout up to 600s)".cyan());
+    println!(
+        "    {}",
+        "bash  (streaming output, safety-checked, timeout up to 600s)".cyan()
+    );
     println!();
     println!("  {}", "Web:".bright_white());
-    println!("    {}", "url_fetch  (HTML → plain text, 1-hour cache, 128KB max)".cyan());
+    println!(
+        "    {}",
+        "url_fetch  (HTML → plain text, 1-hour cache, 128KB max)".cyan()
+    );
     println!();
     println!("  {}", "Git:".bright_white());
-    println!("    {}", "git_snapshot  (creates stash for /rollback)".cyan());
+    println!(
+        "    {}",
+        "git_snapshot  (creates stash for /rollback)".cyan()
+    );
     println!();
     println!(
         "  {}",
@@ -245,15 +297,43 @@ pub fn print_help(
 
     section("CONFIG");
 
-    println!("  {:<42} {}", "~/.dipralix/config.toml".cyan(), "global settings and API keys".dimmed());
-    println!("  {:<42} {}", ".dipralix/project.md".cyan(),    "per-project instructions (auto-loaded)".dimmed());
-    println!("  {:<42} {}", ".dipralix/safety.toml".cyan(),   "per-project permission policy overrides".dimmed());
-    println!("  {:<42} {}", ".dipralix/memory.md".cyan(),     "persistent facts written by /memorize".dimmed());
+    println!(
+        "  {:<42} {}",
+        "~/.dipralix/config.toml".cyan(),
+        "global settings and API keys".dimmed()
+    );
+    println!(
+        "  {:<42} {}",
+        ".dipralix/project.md".cyan(),
+        "per-project instructions (auto-loaded)".dimmed()
+    );
+    println!(
+        "  {:<42} {}",
+        ".dipralix/safety.toml".cyan(),
+        "per-project permission policy overrides".dimmed()
+    );
+    println!(
+        "  {:<42} {}",
+        ".dipralix/memory.md".cyan(),
+        "persistent facts written by /memorize".dimmed()
+    );
     println!();
-    println!("  {}", "auto_apply = false          # ask before overwriting files".bright_black());
-    println!("  {}", "max_iterations = 50         # pause when tool loop exceeds limit".bright_black());
-    println!("  {}", "context_warn = 0.75         # warn when context reaches 75%".bright_black());
-    println!("  {}", "daily_budget_usd = 5.00     # alert when session cost exceeds".bright_black());
+    println!(
+        "  {}",
+        "auto_apply = false          # ask before overwriting files".bright_black()
+    );
+    println!(
+        "  {}",
+        "max_iterations = 50         # pause when tool loop exceeds limit".bright_black()
+    );
+    println!(
+        "  {}",
+        "context_warn = 0.75         # warn when context reaches 75%".bright_black()
+    );
+    println!(
+        "  {}",
+        "daily_budget_usd = 5.00     # alert when session cost exceeds".bright_black()
+    );
     println!();
     println!(
         "  {}",

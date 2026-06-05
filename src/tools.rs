@@ -1,13 +1,16 @@
+use std::collections::HashMap;
 use std::io::Write as _;
 use std::sync::OnceLock;
-use std::collections::HashMap;
 
 use colored::Colorize;
 use serde_json::{json, Value};
 use tokio::io::AsyncBufReadExt as _;
 use walkdir::WalkDir;
 
-use crate::{audit, diff_view, types::FunctionDeclaration, integrations::IntegrationRegistry, mcp::McpRegistry, safety, snapshot};
+use crate::{
+    audit, diff_view, integrations::IntegrationRegistry, mcp::McpRegistry, safety, snapshot,
+    types::FunctionDeclaration,
+};
 
 // ── Context passed to every tool invocation ────────────────────────────────────
 
@@ -34,10 +37,18 @@ pub struct ToolResult {
 
 impl ToolResult {
     pub fn ok(s: impl Into<String>) -> Self {
-        Self { output: s.into(), is_error: false, was_streamed: false }
+        Self {
+            output: s.into(),
+            is_error: false,
+            was_streamed: false,
+        }
     }
     pub fn err(s: impl Into<String>) -> Self {
-        Self { output: s.into(), is_error: true, was_streamed: false }
+        Self {
+            output: s.into(),
+            is_error: true,
+            was_streamed: false,
+        }
     }
 }
 
@@ -45,11 +56,18 @@ impl ToolResult {
 
 pub async fn execute_tool(name: &str, args: &Value, ctx: &ToolContext) -> ToolResult {
     // Route integration tools: github__..., discord__..., gdrive__..., gmail__...
-    if name.starts_with("github__") || name.starts_with("discord__") || name.starts_with("gdrive__") || name.starts_with("gmail__") {
+    if name.starts_with("github__")
+        || name.starts_with("discord__")
+        || name.starts_with("gdrive__")
+        || name.starts_with("gmail__")
+    {
         if let Some(ref ireg) = ctx.integrations {
             return ireg.call_tool(name, args.clone(), ctx);
         }
-        return ToolResult::err(format!("Integration tool '{}' called but integrations are not configured", name));
+        return ToolResult::err(format!(
+            "Integration tool '{}' called but integrations are not configured",
+            name
+        ));
     }
 
     // MCP tools have names like "server__toolname"
@@ -57,28 +75,31 @@ pub async fn execute_tool(name: &str, args: &Value, ctx: &ToolContext) -> ToolRe
         if let Some(ref mcp) = ctx.mcp {
             return mcp.call_tool(name, args.clone(), ctx).await;
         }
-        return ToolResult::err(format!("MCP tool '{}' called but MCP is not configured", name));
+        return ToolResult::err(format!(
+            "MCP tool '{}' called but MCP is not configured",
+            name
+        ));
     }
 
     match name {
-        "read_file"        => tool_read_file(args),
-        "write_file"       => tool_write_file(args, ctx),
-        "edit_file"        => tool_edit_file(args, ctx),
-        "append_file"      => tool_append_file(args),
-        "bash"             => tool_bash(args, ctx).await,
-        "list_files"       => tool_list_files(args),
-        "list_symbols"     => tool_list_symbols(args),
-        "search_files"     => tool_search_files(args),
-        "glob"             => tool_glob(args),
+        "read_file" => tool_read_file(args),
+        "write_file" => tool_write_file(args, ctx),
+        "edit_file" => tool_edit_file(args, ctx),
+        "append_file" => tool_append_file(args),
+        "bash" => tool_bash(args, ctx).await,
+        "list_files" => tool_list_files(args),
+        "list_symbols" => tool_list_symbols(args),
+        "search_files" => tool_search_files(args),
+        "glob" => tool_glob(args),
         "create_directory" => tool_create_directory(args),
-        "delete_file"      => tool_delete_file(args).await,
-        "move_file"        => tool_move_file(args),
-        "copy_file"        => tool_copy_file(args),
-        "url_fetch"         => tool_url_fetch(args).await,
-        "git_snapshot"      => tool_git_snapshot(args).await,
+        "delete_file" => tool_delete_file(args).await,
+        "move_file" => tool_move_file(args),
+        "copy_file" => tool_copy_file(args),
+        "url_fetch" => tool_url_fetch(args).await,
+        "git_snapshot" => tool_git_snapshot(args).await,
         "memorize_decision" => tool_memorize_decision(args).await,
-        "memorize_pattern"  => tool_memorize_pattern(args).await,
-        other               => ToolResult::err(format!("Unknown tool: {other}")),
+        "memorize_pattern" => tool_memorize_pattern(args).await,
+        other => ToolResult::err(format!("Unknown tool: {other}")),
     }
 }
 
@@ -90,14 +111,19 @@ fn tool_read_file(args: &Value) -> ToolResult {
         None => return ToolResult::err("Missing required argument: path"),
     };
     let start_line = args.get("start_line").and_then(Value::as_u64).unwrap_or(1) as usize;
-    let end_line   = args.get("end_line").and_then(Value::as_u64).map(|n| n as usize);
+    let end_line = args
+        .get("end_line")
+        .and_then(Value::as_u64)
+        .map(|n| n as usize);
 
     match std::fs::read_to_string(path) {
         Ok(content) => {
             let lines: Vec<&str> = content.lines().collect();
             let total = lines.len();
             let from = start_line.saturating_sub(1).min(total);
-            let to = end_line.map(|e| e.min(total)).unwrap_or(total.min(from + 500));
+            let to = end_line
+                .map(|e| e.min(total))
+                .unwrap_or(total.min(from + 500));
 
             let chunk = lines[from..to]
                 .iter()
@@ -179,7 +205,11 @@ fn tool_append_file(args: &Value) -> ToolResult {
 
     snapshot::capture(path, "append_file");
 
-    match std::fs::OpenOptions::new().create(true).append(true).open(path) {
+    match std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+    {
         Ok(mut f) => match f.write_all(content.as_bytes()) {
             Ok(_) => {
                 audit::log("append_file", path, true);
@@ -194,13 +224,22 @@ fn tool_append_file(args: &Value) -> ToolResult {
 // ── edit_file ──────────────────────────────────────────────────────────────────
 
 fn tool_edit_file(args: &Value, ctx: &ToolContext) -> ToolResult {
-    let path    = match args.get("path").and_then(Value::as_str)    { Some(p) => p, None => return ToolResult::err("Missing: path") };
-    let old_str = match args.get("old_str").and_then(Value::as_str) { Some(s) => s, None => return ToolResult::err("Missing: old_str") };
-    let new_str = match args.get("new_str").and_then(Value::as_str) { Some(s) => s, None => return ToolResult::err("Missing: new_str") };
+    let path = match args.get("path").and_then(Value::as_str) {
+        Some(p) => p,
+        None => return ToolResult::err("Missing: path"),
+    };
+    let old_str = match args.get("old_str").and_then(Value::as_str) {
+        Some(s) => s,
+        None => return ToolResult::err("Missing: old_str"),
+    };
+    let new_str = match args.get("new_str").and_then(Value::as_str) {
+        Some(s) => s,
+        None => return ToolResult::err("Missing: new_str"),
+    };
     let occurrence = args.get("occurrence").and_then(Value::as_u64).unwrap_or(1) as usize;
 
     let content = match std::fs::read_to_string(path) {
-        Ok(c)  => c,
+        Ok(c) => c,
         Err(e) => return ToolResult::err(format!("Cannot read '{}': {}", path, e)),
     };
 
@@ -259,12 +298,8 @@ fn tool_edit_file(args: &Value, ctx: &ToolContext) -> ToolResult {
         }
     } else {
         // Fuzzy fallback: whitespace-normalized matching
-        let normalize = |s: &str| -> String {
-            s.lines()
-                .map(|l| l.trim())
-                .collect::<Vec<_>>()
-                .join("\n")
-        };
+        let normalize =
+            |s: &str| -> String { s.lines().map(|l| l.trim()).collect::<Vec<_>>().join("\n") };
         let normalized_old = normalize(old_str);
         let normalized_content = normalize(&content);
 
@@ -283,8 +318,8 @@ fn tool_edit_file(args: &Value, ctx: &ToolContext) -> ToolResult {
             }
 
             if let Some(start_line) = fuzzy_pos {
-                let original_match: String = content_lines[start_line..start_line + old_lines.len()]
-                    .join("\n");
+                let original_match: String =
+                    content_lines[start_line..start_line + old_lines.len()].join("\n");
 
                 let updated = content.replacen(&original_match, new_str, 1);
 
@@ -326,7 +361,11 @@ async fn tool_bash(args: &Value, ctx: &ToolContext) -> ToolResult {
         Some(c) => c,
         None => return ToolResult::err("Missing required argument: command"),
     };
-    let timeout_secs = args.get("timeout").and_then(Value::as_u64).unwrap_or(120).min(600);
+    let timeout_secs = args
+        .get("timeout")
+        .and_then(Value::as_u64)
+        .unwrap_or(120)
+        .min(600);
 
     // Safety check — runs synchronous stdin via block_in_place
     let cmd_owned = command.to_string();
@@ -346,7 +385,7 @@ async fn tool_bash(args: &Value, ctx: &ToolContext) -> ToolResult {
         .stdout(std::process::Stdio::piped())
         .spawn()
     {
-        Ok(c)  => c,
+        Ok(c) => c,
         Err(e) => return ToolResult::err(format!("Failed to spawn command: {}", e)),
     };
 
@@ -358,21 +397,18 @@ async fn tool_bash(args: &Value, ctx: &ToolContext) -> ToolResult {
     const MAX_DISPLAY: usize = 200;
     const MAX_COLLECT: usize = 2000;
 
-    let timed_out = tokio::time::timeout(
-        std::time::Duration::from_secs(timeout_secs),
-        async {
-            while let Ok(Some(line)) = reader.next_line().await {
-                if ctx.stream_output && displayed < MAX_DISPLAY {
-                    println!("  {} {}", "│".bright_black(), line.dimmed());
-                    let _ = std::io::stdout().flush();
-                    displayed += 1;
-                }
-                if all_lines.len() < MAX_COLLECT {
-                    all_lines.push(line);
-                }
+    let timed_out = tokio::time::timeout(std::time::Duration::from_secs(timeout_secs), async {
+        while let Ok(Some(line)) = reader.next_line().await {
+            if ctx.stream_output && displayed < MAX_DISPLAY {
+                println!("  {} {}", "│".bright_black(), line.dimmed());
+                let _ = std::io::stdout().flush();
+                displayed += 1;
             }
-        },
-    )
+            if all_lines.len() < MAX_COLLECT {
+                all_lines.push(line);
+            }
+        }
+    })
     .await
     .is_err();
 
@@ -381,22 +417,29 @@ async fn tool_bash(args: &Value, ctx: &ToolContext) -> ToolResult {
         return ToolResult::err(format!("Command timed out after {}s", timeout_secs));
     }
 
-    let status    = child.wait().await;
+    let status = child.wait().await;
     let succeeded = status.map(|s| s.success()).unwrap_or(false);
-    let output    = if all_lines.is_empty() {
+    let output = if all_lines.is_empty() {
         format!("(exit {})", if succeeded { 0 } else { 1 })
     } else {
         all_lines.join("\n")
     };
 
-    ToolResult { output, is_error: !succeeded, was_streamed: ctx.stream_output }
+    ToolResult {
+        output,
+        is_error: !succeeded,
+        was_streamed: ctx.stream_output,
+    }
 }
 
 // ── list_files ─────────────────────────────────────────────────────────────────
 
 fn tool_list_files(args: &Value) -> ToolResult {
-    let path      = args.get("path").and_then(Value::as_str).unwrap_or(".");
-    let recursive = args.get("recursive").and_then(Value::as_bool).unwrap_or(false);
+    let path = args.get("path").and_then(Value::as_str).unwrap_or(".");
+    let recursive = args
+        .get("recursive")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
     let max_depth = if recursive { usize::MAX } else { 1 };
 
     let mut lines = Vec::new();
@@ -408,11 +451,20 @@ fn tool_list_files(args: &Value) -> ToolResult {
         .filter_map(|e| e.ok())
     {
         let depth = entry.depth();
-        if depth == 0 { continue; }
+        if depth == 0 {
+            continue;
+        }
 
         let name = entry.file_name().to_string_lossy().to_string();
-        if name.starts_with('.') { continue; }
-        if matches!(name.as_str(), "target" | "node_modules" | "__pycache__" | ".git") { continue; }
+        if name.starts_with('.') {
+            continue;
+        }
+        if matches!(
+            name.as_str(),
+            "target" | "node_modules" | "__pycache__" | ".git"
+        ) {
+            continue;
+        }
 
         let indent = "  ".repeat(depth - 1);
         let suffix = if entry.file_type().is_dir() { "/" } else { "" };
@@ -447,7 +499,10 @@ fn tool_list_symbols(args: &Value) -> ToolResult {
             } else {
                 let mut output = Vec::new();
                 for s in symbols {
-                    output.push(format!("{:<15} {:<30} L{}-L{}", s.kind, s.name, s.start_line, s.end_line));
+                    output.push(format!(
+                        "{:<15} {:<30} L{}-L{}",
+                        s.kind, s.name, s.start_line, s.end_line
+                    ));
                 }
                 ToolResult::ok(output.join("\n"))
             }
@@ -463,20 +518,23 @@ fn tool_search_files(args: &Value) -> ToolResult {
         Some(p) => p,
         None => return ToolResult::err("Missing required argument: pattern"),
     };
-    let path             = args.get("path").and_then(Value::as_str).unwrap_or(".");
-    let case_insensitive = args.get("case_insensitive").and_then(Value::as_bool).unwrap_or(false);
+    let path = args.get("path").and_then(Value::as_str).unwrap_or(".");
+    let case_insensitive = args
+        .get("case_insensitive")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
 
     let re = match regex::RegexBuilder::new(pattern)
         .case_insensitive(case_insensitive)
         .build()
     {
-        Ok(r)  => r,
+        Ok(r) => r,
         Err(e) => return ToolResult::err(format!("Invalid regex '{}': {}", pattern, e)),
     };
 
     let skip_exts = [
-        "png","jpg","jpeg","gif","ico","svg","webp","pdf","zip","tar","gz",
-        "exe","bin","so","dll","dylib","wasm","lock",
+        "png", "jpg", "jpeg", "gif", "ico", "svg", "webp", "pdf", "zip", "tar", "gz", "exe", "bin",
+        "so", "dll", "dylib", "wasm", "lock",
     ];
 
     let mut matches = Vec::new();
@@ -488,17 +546,21 @@ fn tool_search_files(args: &Value) -> ToolResult {
         .filter_map(|e| e.ok())
         .filter(|e| e.file_type().is_file())
     {
-        let fp     = entry.path();
+        let fp = entry.path();
         let fp_str = fp.to_string_lossy();
 
-        if fp_str.contains("/target/") || fp_str.contains("/node_modules/")
-            || fp_str.contains("/.git/") || fp_str.contains("/__pycache__/")
+        if fp_str.contains("/target/")
+            || fp_str.contains("/node_modules/")
+            || fp_str.contains("/.git/")
+            || fp_str.contains("/__pycache__/")
         {
             continue;
         }
 
         let ext = fp.extension().and_then(|e| e.to_str()).unwrap_or("");
-        if skip_exts.contains(&ext) { continue; }
+        if skip_exts.contains(&ext) {
+            continue;
+        }
 
         if let Ok(content) = std::fs::read_to_string(fp) {
             for (i, line) in content.lines().enumerate() {
@@ -515,7 +577,9 @@ fn tool_search_files(args: &Value) -> ToolResult {
         }
 
         files_checked += 1;
-        if files_checked > 2000 { break; }
+        if files_checked > 2000 {
+            break;
+        }
     }
 
     if matches.is_empty() {
@@ -560,7 +624,7 @@ fn tool_create_directory(args: &Value) -> ToolResult {
         None => return ToolResult::err("Missing required argument: path"),
     };
     match std::fs::create_dir_all(path) {
-        Ok(_)  => ToolResult::ok(format!("Created directory '{}'", path)),
+        Ok(_) => ToolResult::ok(format!("Created directory '{}'", path)),
         Err(e) => ToolResult::err(format!("Cannot create directory '{}': {}", path, e)),
     }
 }
@@ -584,7 +648,7 @@ async fn tool_delete_file(args: &Value) -> ToolResult {
     snapshot::capture(path, "delete_file");
 
     let meta = match std::fs::metadata(path) {
-        Ok(m)  => m,
+        Ok(m) => m,
         Err(e) => return ToolResult::err(format!("Cannot access '{}': {}", path, e)),
     };
 
@@ -599,23 +663,37 @@ async fn tool_delete_file(args: &Value) -> ToolResult {
     };
 
     match result {
-        Ok(msg)  => { audit::log("delete_file", path, true);  ToolResult::ok(msg) }
-        Err(msg) => { audit::log("delete_file", path, false); ToolResult::err(msg) }
+        Ok(msg) => {
+            audit::log("delete_file", path, true);
+            ToolResult::ok(msg)
+        }
+        Err(msg) => {
+            audit::log("delete_file", path, false);
+            ToolResult::err(msg)
+        }
     }
 }
 
 // ── move_file ──────────────────────────────────────────────────────────────────
 
 fn tool_move_file(args: &Value) -> ToolResult {
-    let src = match args.get("source").and_then(Value::as_str)      { Some(p) => p, None => return ToolResult::err("Missing: source") };
-    let dst = match args.get("destination").and_then(Value::as_str) { Some(p) => p, None => return ToolResult::err("Missing: destination") };
+    let src = match args.get("source").and_then(Value::as_str) {
+        Some(p) => p,
+        None => return ToolResult::err("Missing: source"),
+    };
+    let dst = match args.get("destination").and_then(Value::as_str) {
+        Some(p) => p,
+        None => return ToolResult::err("Missing: destination"),
+    };
 
     if let Some(parent) = std::path::Path::new(dst).parent() {
-        if !parent.as_os_str().is_empty() { let _ = std::fs::create_dir_all(parent); }
+        if !parent.as_os_str().is_empty() {
+            let _ = std::fs::create_dir_all(parent);
+        }
     }
 
     match std::fs::rename(src, dst) {
-        Ok(_)  => ToolResult::ok(format!("Moved '{}' → '{}'", src, dst)),
+        Ok(_) => ToolResult::ok(format!("Moved '{}' → '{}'", src, dst)),
         Err(e) => ToolResult::err(format!("Cannot move '{}' to '{}': {}", src, dst, e)),
     }
 }
@@ -623,23 +701,32 @@ fn tool_move_file(args: &Value) -> ToolResult {
 // ── copy_file ──────────────────────────────────────────────────────────────────
 
 fn tool_copy_file(args: &Value) -> ToolResult {
-    let src = match args.get("source").and_then(Value::as_str)      { Some(p) => p, None => return ToolResult::err("Missing: source") };
-    let dst = match args.get("destination").and_then(Value::as_str) { Some(p) => p, None => return ToolResult::err("Missing: destination") };
+    let src = match args.get("source").and_then(Value::as_str) {
+        Some(p) => p,
+        None => return ToolResult::err("Missing: source"),
+    };
+    let dst = match args.get("destination").and_then(Value::as_str) {
+        Some(p) => p,
+        None => return ToolResult::err("Missing: destination"),
+    };
 
     if let Some(parent) = std::path::Path::new(dst).parent() {
-        if !parent.as_os_str().is_empty() { let _ = std::fs::create_dir_all(parent); }
+        if !parent.as_os_str().is_empty() {
+            let _ = std::fs::create_dir_all(parent);
+        }
     }
 
     match std::fs::copy(src, dst) {
         Ok(bytes) => ToolResult::ok(format!("Copied '{}' → '{}' ({} bytes)", src, dst, bytes)),
-        Err(e)    => ToolResult::err(format!("Cannot copy '{}' to '{}': {}", src, dst, e)),
+        Err(e) => ToolResult::err(format!("Cannot copy '{}' to '{}': {}", src, dst, e)),
     }
 }
 
 // ── url_fetch ──────────────────────────────────────────────────────────────────
 
 // Simple in-memory URL cache: url → (content, fetched_at)
-static URL_CACHE: OnceLock<tokio::sync::Mutex<HashMap<String, (String, std::time::Instant)>>> = OnceLock::new();
+static URL_CACHE: OnceLock<tokio::sync::Mutex<HashMap<String, (String, std::time::Instant)>>> =
+    OnceLock::new();
 fn url_cache() -> &'static tokio::sync::Mutex<HashMap<String, (String, std::time::Instant)>> {
     URL_CACHE.get_or_init(|| tokio::sync::Mutex::new(HashMap::new()))
 }
@@ -650,7 +737,10 @@ async fn tool_url_fetch(args: &Value) -> ToolResult {
         Some(u) => u,
         None => return ToolResult::err("Missing required argument: url"),
     };
-    let max_len = args.get("max_length").and_then(Value::as_u64).unwrap_or(32_000) as usize;
+    let max_len = args
+        .get("max_length")
+        .and_then(Value::as_u64)
+        .unwrap_or(32_000) as usize;
     let max_len = max_len.min(128_000);
 
     // Check cache
@@ -669,28 +759,33 @@ async fn tool_url_fetch(args: &Value) -> ToolResult {
         .user_agent("Mozilla/5.0 (compatible; dipralix/1.0)")
         .build()
     {
-        Ok(c)  => c,
+        Ok(c) => c,
         Err(e) => return ToolResult::err(format!("HTTP client error: {}", e)),
     };
 
     let resp = match client.get(url).send().await {
-        Ok(r)  => r,
+        Ok(r) => r,
         Err(e) => return ToolResult::err(format!("Request failed for '{}': {}", url, e)),
     };
 
     let status = resp.status();
-    let content_type = resp.headers()
+    let content_type = resp
+        .headers()
         .get("content-type")
         .and_then(|v| v.to_str().ok())
         .unwrap_or("")
         .to_string();
 
     let body = match resp.text().await {
-        Ok(t)  => t,
+        Ok(t) => t,
         Err(e) => return ToolResult::err(format!("Failed to read body: {}", e)),
     };
 
-    let text = if content_type.contains("html") { strip_html(&body) } else { body };
+    let text = if content_type.contains("html") {
+        strip_html(&body)
+    } else {
+        body
+    };
 
     // Store in cache
     {
@@ -726,7 +821,10 @@ fn strip_html(html: &str) -> String {
 // ── git_snapshot ───────────────────────────────────────────────────────────────
 
 async fn tool_git_snapshot(args: &Value) -> ToolResult {
-    let name = args.get("name").and_then(Value::as_str).unwrap_or("dipralix-auto");
+    let name = args
+        .get("name")
+        .and_then(Value::as_str)
+        .unwrap_or("dipralix-auto");
 
     let out = tokio::process::Command::new("git")
         .args(["stash", "push", "-m", name, "--include-untracked"])

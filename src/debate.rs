@@ -1,6 +1,6 @@
 use anyhow::Result;
-use std::sync::Arc;
 use colored::Colorize;
+use std::sync::Arc;
 
 use crate::backend::BackendClient;
 use crate::config::Config;
@@ -17,13 +17,24 @@ impl PeerReviewEngine {
     }
 
     /// Triggers a debate if the command/action matches high-risk criteria.
-    pub fn review_action<'a>(&'a self, action: &'a str, risk: RiskLevel, context: &'a str) -> core::pin::Pin<Box<dyn std::future::Future<Output = Result<String>> + 'a>> {
+    pub fn review_action<'a>(
+        &'a self,
+        action: &'a str,
+        risk: RiskLevel,
+        context: &'a str,
+    ) -> core::pin::Pin<Box<dyn std::future::Future<Output = Result<String>> + 'a>> {
         Box::pin(async move {
             if risk != RiskLevel::Confirm && risk != RiskLevel::Deny {
-                return Ok(format!("Action approved automatically (Risk Level: {:?})", risk));
+                return Ok(format!(
+                    "Action approved automatically (Risk Level: {:?})",
+                    risk
+                ));
             }
 
-            println!("\n  {} Initiating Red Team vs Blue Team peer review...", "[DEBATE]".cyan());
+            println!(
+                "\n  {} Initiating Red Team vs Blue Team peer review...",
+                "[DEBATE]".cyan()
+            );
 
             let client = self.client.clone();
             let action_clone = action.to_string();
@@ -50,8 +61,12 @@ impl PeerReviewEngine {
             );
             let blue_res = crate::agent::run_ci_agent(&client, &config_clone, &prompt_blue).await;
 
-            let red_arg = red_res.map(|r| r.message).unwrap_or_else(|e| format!("Red team failed: {}", e));
-            let blue_arg = blue_res.map(|r| r.message).unwrap_or_else(|e| format!("Blue team failed: {}", e));
+            let red_arg = red_res
+                .map(|r| r.message)
+                .unwrap_or_else(|e| format!("Red team failed: {}", e));
+            let blue_arg = blue_res
+                .map(|r| r.message)
+                .unwrap_or_else(|e| format!("Blue team failed: {}", e));
 
             println!("\n  {} {}", "RED TEAM:".red().bold(), red_arg);
             println!("\n  {} {}", "BLUE TEAM:".blue().bold(), blue_arg);
@@ -66,10 +81,13 @@ impl PeerReviewEngine {
                 action, red_arg, blue_arg
             );
 
-            let final_decision = crate::agent::run_ci_agent(&self.client, &self.config, &arbitration_prompt)
-                .await
-                .map(|r| r.message)
-                .unwrap_or_else(|_| "APPROVE: Arbitration failed, falling back to manual review".into());
+            let final_decision =
+                crate::agent::run_ci_agent(&self.client, &self.config, &arbitration_prompt)
+                    .await
+                    .map(|r| r.message)
+                    .unwrap_or_else(|_| {
+                        "APPROVE: Arbitration failed, falling back to manual review".into()
+                    });
 
             println!("\n  {} {}", "ARBITRATOR:".magenta().bold(), final_decision);
 

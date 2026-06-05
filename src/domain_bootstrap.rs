@@ -7,13 +7,12 @@
 // starts with the freshest context, not stale guesses.
 // ══════════════════════════════════════════════════════════════════════════════
 
+use crate::ui::nullvoid::{
+    thin_rule_stdout, AMBER, BRIGHT, FIRE, I_ACTIVE, I_ADD, I_ERROR, I_MARK, I_OUT, I_PROMPT,
+    I_STREAM, I_TARGET, I_WARN, MINT, MUTED, PLASMA, RESET, TEXT, VIOLET,
+};
 use std::io::Write;
 use std::time::{Duration, Instant};
-use crate::ui::nullvoid::{
-    VIOLET, I_MARK, BRIGHT, RESET, MUTED, MINT, PLASMA, FIRE, AMBER, TEXT,
-    I_TARGET, I_ERROR, I_ADD, I_ACTIVE, I_PROMPT, I_STREAM, I_OUT, I_WARN,
-    thin_rule_stdout,
-};
 
 // ══════════════════════════════════════════════════════════════════════════════
 // Domain Blueprint
@@ -253,10 +252,7 @@ async fn search_domain(query: &str) -> Vec<SearchResult> {
         return Vec::new();
     }
 
-    let url = format!(
-        "https://lite.duckduckgo.com/lite/?q={}",
-        urlencoding(query)
-    );
+    let url = format!("https://lite.duckduckgo.com/lite/?q={}", urlencoding(query));
 
     let client = match reqwest::Client::builder()
         .user_agent("FORGE/0.0.2 (domain-research)")
@@ -343,7 +339,9 @@ fn extract_attr(html: &str, attr: &str) -> String {
         let end = if delim == '"' || delim == '\'' {
             inner.find(delim).unwrap_or(inner.len())
         } else {
-            inner.find(|c: char| c.is_whitespace() || c == '>').unwrap_or(inner.len())
+            inner
+                .find(|c: char| c.is_whitespace() || c == '>')
+                .unwrap_or(inner.len())
         };
         inner[..end].to_string()
     } else {
@@ -383,7 +381,11 @@ pub async fn select_domain() -> (DomainBlueprint, Vec<SearchResult>) {
     println!(
         " {viol}{mark} {bright}What are you building?{reset}  \
          {muted}(select domain — web search + embedded blueprint){reset}",
-        viol = VIOLET, mark = I_MARK, bright = BRIGHT, reset = RESET, muted = MUTED
+        viol = VIOLET,
+        mark = I_MARK,
+        bright = BRIGHT,
+        reset = RESET,
+        muted = MUTED
     );
     println!();
     println!(
@@ -408,9 +410,16 @@ pub async fn select_domain() -> (DomainBlueprint, Vec<SearchResult>) {
     );
     println!(
         " {mint}[C]{reset} Custom domain      {muted}[Enter] = General{reset}",
-        mint = MINT, muted = MUTED, reset = RESET
+        mint = MINT,
+        muted = MUTED,
+        reset = RESET
     );
-    print!(" {plas}{prompt}{reset} ", plas = PLASMA, prompt = I_PROMPT, reset = RESET);
+    print!(
+        " {plas}{prompt}{reset} ",
+        plas = PLASMA,
+        prompt = I_PROMPT,
+        reset = RESET
+    );
     let _ = std::io::stdout().flush();
 
     let mut buf = String::new();
@@ -422,9 +431,17 @@ pub async fn select_domain() -> (DomainBlueprint, Vec<SearchResult>) {
         println!();
         println!(
             " {amber}{warn} {bright}Describe what you're building (1 line):{reset}",
-            amber = AMBER, warn = I_WARN, bright = BRIGHT, reset = RESET
+            amber = AMBER,
+            warn = I_WARN,
+            bright = BRIGHT,
+            reset = RESET
         );
-        print!(" {plas}{prompt}{reset} ", plas = PLASMA, prompt = I_PROMPT, reset = RESET);
+        print!(
+            " {plas}{prompt}{reset} ",
+            plas = PLASMA,
+            prompt = I_PROMPT,
+            reset = RESET
+        );
         let _ = std::io::stdout().flush();
         let mut desc = String::new();
         let _ = std::io::stdin().read_line(&mut desc);
@@ -439,7 +456,8 @@ pub async fn select_domain() -> (DomainBlueprint, Vec<SearchResult>) {
                 name: Box::leak(desc.clone().into_boxed_str()),
                 category: "custom",
                 tech_stack: Box::leak(format!("Researching: {}", desc).into_boxed_str()),
-                architecture: "Analyze requirements and propose architecture based on industry patterns.",
+                architecture:
+                    "Analyze requirements and propose architecture based on industry patterns.",
                 security: "Apply OWASP Top 10 and domain-specific security best practices.",
                 best_practices: "Research current best practices for this domain.",
                 testing: "Use appropriate testing framework for the chosen tech stack.",
@@ -450,9 +468,20 @@ pub async fn select_domain() -> (DomainBlueprint, Vec<SearchResult>) {
         }
     } else {
         let idx: usize = match trimmed.as_str() {
-            "1" => 0, "2" => 1, "3" => 2, "4" => 3, "5" => 4,
-            "6" => 5, "7" => 6, "8" => 7, "9" => 8, "10" => 9,
-            "11" => 10, "12" => 11, "13" => 12, "14" => 13,
+            "1" => 0,
+            "2" => 1,
+            "3" => 2,
+            "4" => 3,
+            "5" => 4,
+            "6" => 5,
+            "7" => 6,
+            "8" => 7,
+            "9" => 8,
+            "10" => 9,
+            "11" => 10,
+            "12" => 11,
+            "13" => 12,
+            "14" => 13,
             _ => 14, // default General
         };
         DOMAINS[idx].clone()
@@ -461,8 +490,12 @@ pub async fn select_domain() -> (DomainBlueprint, Vec<SearchResult>) {
     // ── Real-time web search with spinner ──────────────────────────────────
     print!(
         "\n {viol}{out} {bright}Researching {amber}{name}{bright} — searching web…{reset}  ",
-        viol = VIOLET, out = I_OUT, bright = BRIGHT, amber = AMBER,
-        name = domain.name, reset = RESET
+        viol = VIOLET,
+        out = I_OUT,
+        bright = BRIGHT,
+        amber = AMBER,
+        name = domain.name,
+        reset = RESET
     );
     let _ = std::io::stdout().flush();
 
@@ -474,31 +507,46 @@ pub async fn select_domain() -> (DomainBlueprint, Vec<SearchResult>) {
     println!();
     println!(
         " {muted}{stream}{stream}{stream} {text}{count} results in {elapsed:.1?}s{reset}",
-        muted = MUTED, stream = I_STREAM, text = TEXT,
-        count = search_results.len(), elapsed = elapsed, reset = RESET
+        muted = MUTED,
+        stream = I_STREAM,
+        text = TEXT,
+        count = search_results.len(),
+        elapsed = elapsed,
+        reset = RESET
     );
 
     if !search_results.is_empty() {
         println!(
             " {plas}┌── {bright}Latest from the web{reset}",
-            plas = PLASMA, bright = BRIGHT, reset = RESET
+            plas = PLASMA,
+            bright = BRIGHT,
+            reset = RESET
         );
         for (i, r) in search_results.iter().enumerate() {
             println!(
                 " {muted}│ {mint}{num}.{reset} {bright}{title}{reset}",
-                muted = MUTED, mint = MINT, num = i + 1, bright = BRIGHT,
-                title = r.title, reset = RESET
+                muted = MUTED,
+                mint = MINT,
+                num = i + 1,
+                bright = BRIGHT,
+                title = r.title,
+                reset = RESET
             );
             if !r.snippet.is_empty() {
                 println!(
                     " {muted}│    {text}{snippet}{reset}",
-                    muted = MUTED, text = TEXT, snippet = r.snippet, reset = RESET
+                    muted = MUTED,
+                    text = TEXT,
+                    snippet = r.snippet,
+                    reset = RESET
                 );
             }
         }
         println!(
             " {muted}└{rule}{reset}",
-            muted = MUTED, rule = "─".repeat(58), reset = RESET
+            muted = MUTED,
+            rule = "─".repeat(58),
+            reset = RESET
         );
     } else if domain.category != "general" {
         println!(
@@ -512,32 +560,56 @@ pub async fn select_domain() -> (DomainBlueprint, Vec<SearchResult>) {
         println!();
         println!(
             " {viol}{out} {bright}Embedded Blueprint — {amber}{name}{reset}",
-            viol = VIOLET, out = I_OUT, bright = BRIGHT, amber = AMBER,
-            name = domain.name, reset = RESET
+            viol = VIOLET,
+            out = I_OUT,
+            bright = BRIGHT,
+            amber = AMBER,
+            name = domain.name,
+            reset = RESET
         );
         thin_rule_stdout();
         println!(
             " {mint}{mark} Tech Stack:{reset}  {text}{stack}{reset}",
-            mint = MINT, mark = I_MARK, reset = RESET, text = TEXT, stack = domain.tech_stack
+            mint = MINT,
+            mark = I_MARK,
+            reset = RESET,
+            text = TEXT,
+            stack = domain.tech_stack
         );
         println!(
             " {plas}{target} Architecture:{reset}  {text}{arch}{reset}",
-            plas = PLASMA, target = I_TARGET, reset = RESET, text = TEXT, arch = domain.architecture
+            plas = PLASMA,
+            target = I_TARGET,
+            reset = RESET,
+            text = TEXT,
+            arch = domain.architecture
         );
         println!(
             " {fire}{err} Security:{reset}  {text}{sec}{reset}",
-            fire = FIRE, err = I_ERROR, reset = RESET, text = TEXT, sec = domain.security
+            fire = FIRE,
+            err = I_ERROR,
+            reset = RESET,
+            text = TEXT,
+            sec = domain.security
         );
         println!(
             " {amber}{add} Best Practices:{reset}  {text}{bp}{reset}",
-            amber = AMBER, add = I_ADD, reset = RESET, text = TEXT, bp = domain.best_practices
+            amber = AMBER,
+            add = I_ADD,
+            reset = RESET,
+            text = TEXT,
+            bp = domain.best_practices
         );
         thin_rule_stdout();
         println!(
             " {muted}{active} {text}Domain context injected. Agent will use \
              {amber}{name}{text} conventions.{reset}",
-            muted = MUTED, active = I_ACTIVE, reset = RESET, text = TEXT,
-            amber = AMBER, name = domain.name
+            muted = MUTED,
+            active = I_ACTIVE,
+            reset = RESET,
+            text = TEXT,
+            amber = AMBER,
+            name = domain.name
         );
         println!();
     }
@@ -607,7 +679,9 @@ You are building a **{name}** project. Pre-load this domain knowledge:
         for (i, r) in search_results.iter().enumerate() {
             ctx.push_str(&format!("{}. **{}** — {}\n", i + 1, r.title, r.snippet));
         }
-        ctx.push_str("\nIncorporate these latest findings where they improve upon the embedded blueprint.\n");
+        ctx.push_str(
+            "\nIncorporate these latest findings where they improve upon the embedded blueprint.\n",
+        );
     }
 
     ctx.push_str("\nUse this blueprint as your foundation. Prefer the recommended stack unless the user specifies otherwise. \

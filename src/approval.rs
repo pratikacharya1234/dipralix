@@ -44,15 +44,15 @@ pub struct ApprovalMatrix {
 impl Default for ApprovalMatrix {
     fn default() -> Self {
         let mut actions = HashMap::new();
-        actions.insert("read_file".into(),      ApprovalLevel::Auto);
-        actions.insert("write_file".into(),     ApprovalLevel::Notify);
-        actions.insert("edit_file".into(),      ApprovalLevel::Confirm);
-        actions.insert("bash".into(),           ApprovalLevel::Confirm);
-        actions.insert("bash_rm".into(),        ApprovalLevel::Deny);
-        actions.insert("bash_git_push".into(),  ApprovalLevel::Deny);
-        actions.insert("bash_docker_run".into(),ApprovalLevel::Confirm);
-        actions.insert("bash_curl".into(),      ApprovalLevel::Confirm);
-        actions.insert("bash_sudo".into(),      ApprovalLevel::Deny);
+        actions.insert("read_file".into(), ApprovalLevel::Auto);
+        actions.insert("write_file".into(), ApprovalLevel::Notify);
+        actions.insert("edit_file".into(), ApprovalLevel::Confirm);
+        actions.insert("bash".into(), ApprovalLevel::Confirm);
+        actions.insert("bash_rm".into(), ApprovalLevel::Deny);
+        actions.insert("bash_git_push".into(), ApprovalLevel::Deny);
+        actions.insert("bash_docker_run".into(), ApprovalLevel::Confirm);
+        actions.insert("bash_curl".into(), ApprovalLevel::Confirm);
+        actions.insert("bash_sudo".into(), ApprovalLevel::Deny);
         Self { actions }
     }
 }
@@ -92,18 +92,34 @@ fn load_from_disk() -> ApprovalMatrix {
 /// Classify an action by name. Falls back to Auto for unknown actions.
 #[allow(dead_code)]
 pub fn level_for(action: &str) -> ApprovalLevel {
-    matrix().read().unwrap().actions.get(action).copied().unwrap_or(ApprovalLevel::Auto)
+    matrix()
+        .read()
+        .unwrap()
+        .actions
+        .get(action)
+        .copied()
+        .unwrap_or(ApprovalLevel::Auto)
 }
 
 /// Classify a bash command into a more specific action subtype.
 #[allow(dead_code)]
 pub fn classify_bash(cmd: &str) -> ApprovalLevel {
     let c = cmd.trim().to_lowercase();
-    if c.contains("sudo ")            { return level_for("bash_sudo"); }
-    if c.contains("git push")         { return level_for("bash_git_push"); }
-    if c.starts_with("rm ") || c.contains(" rm -") { return level_for("bash_rm"); }
-    if c.contains("docker run")       { return level_for("bash_docker_run"); }
-    if c.starts_with("curl ") || c.contains(" curl ") { return level_for("bash_curl"); }
+    if c.contains("sudo ") {
+        return level_for("bash_sudo");
+    }
+    if c.contains("git push") {
+        return level_for("bash_git_push");
+    }
+    if c.starts_with("rm ") || c.contains(" rm -") {
+        return level_for("bash_rm");
+    }
+    if c.contains("docker run") {
+        return level_for("bash_docker_run");
+    }
+    if c.starts_with("curl ") || c.contains(" curl ") {
+        return level_for("bash_curl");
+    }
     level_for("bash")
 }
 
@@ -115,7 +131,11 @@ pub fn print_matrix() {
     for (action, level) in entries {
         println!("    {:<22} {}", action.dimmed(), level.label());
     }
-    println!("\n  {} {}", "Source:".dimmed(), ".dipralix/approval.toml (or defaults)".dimmed());
+    println!(
+        "\n  {} {}",
+        "Source:".dimmed(),
+        ".dipralix/approval.toml (or defaults)".dimmed()
+    );
 }
 
 pub fn set_speed_fast() {
@@ -125,7 +145,11 @@ pub fn set_speed_fast() {
             *level = ApprovalLevel::Auto;
         }
     }
-    println!("  {} Speed: {} (all non-Deny actions auto-approved)", "[OK]".green(), "FAST".green().bold());
+    println!(
+        "  {} Speed: {} (all non-Deny actions auto-approved)",
+        "[OK]".green(),
+        "FAST".green().bold()
+    );
 }
 
 pub fn set_speed_safe() {
@@ -135,7 +159,11 @@ pub fn set_speed_safe() {
             *level = ApprovalLevel::Confirm;
         }
     }
-    println!("  {} Speed: {} (all Auto actions now require Confirm)", "[OK]".green(), "SAFE".yellow().bold());
+    println!(
+        "  {} Speed: {} (all Auto actions now require Confirm)",
+        "[OK]".green(),
+        "SAFE".yellow().bold()
+    );
 }
 
 #[cfg(test)]

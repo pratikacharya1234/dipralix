@@ -8,7 +8,6 @@ use crate::config::Config;
 // ── Token counting via Gemini API ────────────────────────────────────────────
 
 #[allow(dead_code)]
-
 #[derive(Serialize)]
 struct CountTokensRequest {
     contents: Vec<CountContent>,
@@ -58,10 +57,17 @@ pub async fn count_tokens(text: &str, config: &Config) -> Result<u32> {
         .context("Token count API request failed")?;
 
     let status = resp.status();
-    let body = resp.text().await.context("Failed to read token count response")?;
+    let body = resp
+        .text()
+        .await
+        .context("Failed to read token count response")?;
 
     if !status.is_success() {
-        anyhow::bail!("Token count API HTTP {}: {}", status.as_u16(), trunc_str(&body, 300));
+        anyhow::bail!(
+            "Token count API HTTP {}: {}",
+            status.as_u16(),
+            trunc_str(&body, 300)
+        );
     }
 
     let parsed: CountTokensResponse =
@@ -282,7 +288,12 @@ impl CostTracker {
         }
     }
 
-    pub fn record_usage(&mut self, prompt_tokens: u32, completion_tokens: u32, thinking_tokens: u32) {
+    pub fn record_usage(
+        &mut self,
+        prompt_tokens: u32,
+        completion_tokens: u32,
+        thinking_tokens: u32,
+    ) {
         self.session_input_tokens += prompt_tokens as u64;
         self.session_output_tokens += completion_tokens as u64;
         self.session_thinking_tokens += thinking_tokens as u64;

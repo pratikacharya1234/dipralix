@@ -55,7 +55,10 @@ impl Plan {
                 tasks.push(task);
             }
         }
-        Self { source: None, tasks }
+        Self {
+            source: None,
+            tasks,
+        }
     }
 
     pub fn load() -> Option<Self> {
@@ -71,11 +74,21 @@ impl Plan {
 }
 
 fn parse_status_prefix(trimmed: &str) -> Option<(TaskStatus, &str)> {
-    if let Some(r) = trimmed.strip_prefix("- [ ]") { return Some((TaskStatus::Pending, r)); }
-    if let Some(r) = trimmed.strip_prefix("- [~]") { return Some((TaskStatus::InProgress, r)); }
-    if let Some(r) = trimmed.strip_prefix("- [x]") { return Some((TaskStatus::Completed, r)); }
-    if let Some(r) = trimmed.strip_prefix("- [X]") { return Some((TaskStatus::Completed, r)); }
-    if let Some(r) = trimmed.strip_prefix("- [!]") { return Some((TaskStatus::Failed, r)); }
+    if let Some(r) = trimmed.strip_prefix("- [ ]") {
+        return Some((TaskStatus::Pending, r));
+    }
+    if let Some(r) = trimmed.strip_prefix("- [~]") {
+        return Some((TaskStatus::InProgress, r));
+    }
+    if let Some(r) = trimmed.strip_prefix("- [x]") {
+        return Some((TaskStatus::Completed, r));
+    }
+    if let Some(r) = trimmed.strip_prefix("- [X]") {
+        return Some((TaskStatus::Completed, r));
+    }
+    if let Some(r) = trimmed.strip_prefix("- [!]") {
+        return Some((TaskStatus::Failed, r));
+    }
     None
 }
 
@@ -103,15 +116,33 @@ fn parse_line(line: &str) -> Option<PlanTask> {
     };
 
     let risk = classify_risk(&desc);
-    Some(PlanTask { id, description: desc, status, deps, risk })
+    Some(PlanTask {
+        id,
+        description: desc,
+        status,
+        deps,
+        risk,
+    })
 }
 
 fn classify_risk(desc: &str) -> Risk {
     let d = desc.to_lowercase();
-    let danger = ["rm -rf", "drop table", "drop database", "force-push", "sudo", "destructive", "wipe"];
-    if danger.iter().any(|p| d.contains(p)) { return Risk::Danger; }
+    let danger = [
+        "rm -rf",
+        "drop table",
+        "drop database",
+        "force-push",
+        "sudo",
+        "destructive",
+        "wipe",
+    ];
+    if danger.iter().any(|p| d.contains(p)) {
+        return Risk::Danger;
+    }
     let review = ["deploy", "publish", "push", "migrate", "release", "ship"];
-    if review.iter().any(|p| d.contains(p)) { return Risk::Review; }
+    if review.iter().any(|p| d.contains(p)) {
+        return Risk::Review;
+    }
     Risk::Safe
 }
 
@@ -125,33 +156,54 @@ fn risk_badge(r: &Risk) -> colored::ColoredString {
 
 fn status_glyph(s: &TaskStatus) -> colored::ColoredString {
     match s {
-        TaskStatus::Pending    => "○".dimmed(),
+        TaskStatus::Pending => "○".dimmed(),
         TaskStatus::InProgress => "◐".cyan(),
-        TaskStatus::Completed  => "●".green(),
-        TaskStatus::Failed     => "✗".red().bold(),
+        TaskStatus::Completed => "●".green(),
+        TaskStatus::Failed => "✗".red().bold(),
     }
 }
 
 fn progress_bar(plan: &Plan) -> String {
     let total = plan.tasks.len();
-    if total == 0 { return String::new(); }
-    let done = plan.tasks.iter().filter(|t| t.status == TaskStatus::Completed).count();
+    if total == 0 {
+        return String::new();
+    }
+    let done = plan
+        .tasks
+        .iter()
+        .filter(|t| t.status == TaskStatus::Completed)
+        .count();
     let pct = (done as f32 / total as f32 * 100.0) as u32;
     let filled = (done * 10) / total;
-    let bar: String = (0..10).map(|i| if i < filled { '█' } else { '░' }).collect();
+    let bar: String = (0..10)
+        .map(|i| if i < filled { '█' } else { '░' })
+        .collect();
     format!("[{}] {}/{}  ({}%)", bar, done, total, pct)
 }
 
 pub fn view() {
     let Some(plan) = Plan::load() else {
-        println!("\n  {} No plan found at {}",
+        println!(
+            "\n  {} No plan found at {}",
             "[PLAN]".yellow(),
-            ".dipralix/plans/current.md".dimmed());
-        println!("  Create one with:\n    {}", "echo '- [ ] 1. First task' > .dipralix/plans/current.md".dimmed());
+            ".dipralix/plans/current.md".dimmed()
+        );
+        println!(
+            "  Create one with:\n    {}",
+            "echo '- [ ] 1. First task' > .dipralix/plans/current.md".dimmed()
+        );
         return;
     };
 
-    println!("\n  {} {}", "[PLAN]".cyan().bold(), plan.source.as_ref().map(|p| p.display().to_string()).unwrap_or_default().dimmed());
+    println!(
+        "\n  {} {}",
+        "[PLAN]".cyan().bold(),
+        plan.source
+            .as_ref()
+            .map(|p| p.display().to_string())
+            .unwrap_or_default()
+            .dimmed()
+    );
     println!("  Progress: {}", progress_bar(&plan));
     println!();
 
@@ -159,9 +211,17 @@ pub fn view() {
         let deps_str = if task.deps.is_empty() {
             String::new()
         } else {
-            format!(" ← deps: {}", task.deps.iter().map(|d| d.to_string()).collect::<Vec<_>>().join(","))
+            format!(
+                " ← deps: {}",
+                task.deps
+                    .iter()
+                    .map(|d| d.to_string())
+                    .collect::<Vec<_>>()
+                    .join(",")
+            )
         };
-        println!("  {} {}. {}  {}{}",
+        println!(
+            "  {} {}. {}  {}{}",
             status_glyph(&task.status),
             task.id.to_string().bright_white(),
             task.description,
@@ -178,14 +238,29 @@ pub fn risk_report() {
         return;
     };
 
-    let danger: Vec<_> = plan.tasks.iter().filter(|t| t.risk == Risk::Danger).collect();
-    let review: Vec<_> = plan.tasks.iter().filter(|t| t.risk == Risk::Review).collect();
+    let danger: Vec<_> = plan
+        .tasks
+        .iter()
+        .filter(|t| t.risk == Risk::Danger)
+        .collect();
+    let review: Vec<_> = plan
+        .tasks
+        .iter()
+        .filter(|t| t.risk == Risk::Review)
+        .collect();
 
     println!("\n  {}", "Plan Risk Report".cyan().bold());
-    println!("    {} danger    {} review    {} safe",
+    println!(
+        "    {} danger    {} review    {} safe",
         danger.len().to_string().red().bold(),
         review.len().to_string().yellow(),
-        plan.tasks.iter().filter(|t| t.risk == Risk::Safe).count().to_string().green());
+        plan.tasks
+            .iter()
+            .filter(|t| t.risk == Risk::Safe)
+            .count()
+            .to_string()
+            .green()
+    );
 
     if !danger.is_empty() {
         println!("\n  {}", "Danger items:".red().bold());

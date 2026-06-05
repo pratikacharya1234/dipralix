@@ -9,7 +9,8 @@ pub fn domain_guidance() -> String {
 
     // ── Web: Next.js ─────────────────────────────────────────────────
     if has_file("next.config.js") || has_file("next.config.ts") || has_file("next.config.mjs") {
-        guidance.push_str(r#"
+        guidance.push_str(
+            r#"
 ## Next.js Project Conventions
 
 **Folder Structure:**
@@ -42,7 +43,8 @@ src/
 - Bundle analysis: @next/bundle-analyzer
 - Image optimization: next/image with remotePatterns
 - Streaming: React Suspense boundaries + loading.tsx
-"#);
+"#,
+        );
     }
 
     // ── React / Vite ─────────────────────────────────────────────────
@@ -225,7 +227,8 @@ src/
     }
 
     // ── General Software Engineering ──────────────────────────────────
-    guidance.push_str(r#"
+    guidance.push_str(
+        r#"
 
 ## Universal Software Engineering Standards
 
@@ -256,7 +259,8 @@ src/
 - AI-native architecture (embeddings, RAG, tool calling)
 - Platform engineering over manual ops
 - Observability built-in, not bolted on
-"#);
+"#,
+    );
 
     guidance
 }

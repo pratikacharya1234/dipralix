@@ -17,11 +17,14 @@ impl LivingDocs {
     }
 
     pub async fn sync_docs(&self) -> Result<()> {
-        println!("\n  {} Analyzing project structure to sync Living Documentation...", "[DOCS]".cyan());
+        println!(
+            "\n  {} Analyzing project structure to sync Living Documentation...",
+            "[DOCS]".cyan()
+        );
 
         // Check if ARCHITECTURE.md exists
         let has_arch = Path::new("ARCHITECTURE.md").exists();
-        
+
         let prompt = if has_arch {
             let current = fs::read_to_string("ARCHITECTURE.md").unwrap_or_default();
             format!(
@@ -37,9 +40,9 @@ impl LivingDocs {
 
         println!("  {} Generating ARCHITECTURE.md updates...", "→".dimmed());
         let res = crate::agent::run_ci_agent(&self.client, &self.config, &prompt).await?;
-        
+
         let mut content = res.message.trim().to_string();
-        
+
         // Strip markdown code blocks if the model wrapped the whole response
         if content.starts_with("```markdown") {
             content = content.trim_start_matches("```markdown").to_string();

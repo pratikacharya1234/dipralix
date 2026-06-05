@@ -1,9 +1,9 @@
 use serde_json::{json, Value};
 
-use crate::types::FunctionDeclaration;
 use crate::integrations::GithubConfig;
 use crate::integrations::IntegrationService;
 use crate::tools::ToolResult;
+use crate::types::FunctionDeclaration;
 
 pub struct GithubIntegration {
     token: String,
@@ -41,11 +41,20 @@ impl GithubIntegration {
             .map_err(|e| format!("Failed to read response: {}", e))?;
 
         if !status.is_success() {
-            return Err(format!("GitHub API HTTP {}: {}", status.as_u16(), truncate(&body, 400)));
+            return Err(format!(
+                "GitHub API HTTP {}: {}",
+                status.as_u16(),
+                truncate(&body, 400)
+            ));
         }
 
-        serde_json::from_str(&body)
-            .map_err(|e| format!("Failed to parse GitHub response: {} - body: {}", e, truncate(&body, 200)))
+        serde_json::from_str(&body).map_err(|e| {
+            format!(
+                "Failed to parse GitHub response: {} - body: {}",
+                e,
+                truncate(&body, 200)
+            )
+        })
     }
 
     async fn post(&self, path: &str, body: &Value) -> Result<Value, String> {
@@ -68,11 +77,20 @@ impl GithubIntegration {
             .map_err(|e| format!("Failed to read response: {}", e))?;
 
         if !status.is_success() {
-            return Err(format!("GitHub API HTTP {}: {}", status.as_u16(), truncate(&text, 400)));
+            return Err(format!(
+                "GitHub API HTTP {}: {}",
+                status.as_u16(),
+                truncate(&text, 400)
+            ));
         }
 
-        serde_json::from_str(&text)
-            .map_err(|e| format!("Failed to parse GitHub response: {} - body: {}", e, truncate(&text, 200)))
+        serde_json::from_str(&text).map_err(|e| {
+            format!(
+                "Failed to parse GitHub response: {} - body: {}",
+                e,
+                truncate(&text, 200)
+            )
+        })
     }
 
     async fn patch(&self, path: &str, body: &Value) -> Result<Value, String> {
@@ -95,11 +113,20 @@ impl GithubIntegration {
             .map_err(|e| format!("Failed to read response: {}", e))?;
 
         if !status.is_success() {
-            return Err(format!("GitHub API HTTP {}: {}", status.as_u16(), truncate(&text, 400)));
+            return Err(format!(
+                "GitHub API HTTP {}: {}",
+                status.as_u16(),
+                truncate(&text, 400)
+            ));
         }
 
-        serde_json::from_str(&text)
-            .map_err(|e| format!("Failed to parse GitHub response: {} - body: {}", e, truncate(&text, 200)))
+        serde_json::from_str(&text).map_err(|e| {
+            format!(
+                "Failed to parse GitHub response: {} - body: {}",
+                e,
+                truncate(&text, 200)
+            )
+        })
     }
 
     fn format_repo_result(repo: &Value) -> String {
@@ -109,7 +136,10 @@ impl GithubIntegration {
         let lang = repo["language"].as_str().unwrap_or("");
         let private = repo["private"].as_bool().unwrap_or(false);
         let visibility = if private { "private" } else { "public" };
-        format!("{:<50} {} stars  {}  {}  {}", name, stars, visibility, lang, desc)
+        format!(
+            "{:<50} {} stars  {}  {}  {}",
+            name, stars, visibility, lang, desc
+        )
     }
 
     fn format_issue_result(issue: &Value) -> String {
@@ -126,7 +156,10 @@ impl GithubIntegration {
         } else {
             format!(" [{}]", labels.join(", "))
         };
-        format!("#{} {:<60} {}  by {}{}", number, title, state, user, label_str)
+        format!(
+            "#{} {:<60} {}  by {}{}",
+            number, title, state, user, label_str
+        )
     }
 
     fn format_pr_result(pr: &Value) -> String {
@@ -136,7 +169,13 @@ impl GithubIntegration {
         let user = pr["user"]["login"].as_str().unwrap_or("?");
         let draft = pr["draft"].as_bool().unwrap_or(false);
         let merged = pr["merged"].as_bool().unwrap_or(false);
-        let status = if merged { "merged" } else if draft { "draft" } else { state };
+        let status = if merged {
+            "merged"
+        } else if draft {
+            "draft"
+        } else {
+            state
+        };
         format!("#{} {:<60} {}  by {}", number, title, status, user)
     }
 }
@@ -313,15 +352,22 @@ impl IntegrationService for GithubIntegration {
 
         match tool_name {
             "list_repos" => {
-                let visibility = args.get("visibility").and_then(|v| v.as_str()).unwrap_or("all");
-                let sort = args.get("sort").and_then(|v| v.as_str()).unwrap_or("updated");
+                let visibility = args
+                    .get("visibility")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("all");
+                let sort = args
+                    .get("sort")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("updated");
                 let per_page = args.get("per_page").and_then(|v| v.as_u64()).unwrap_or(10);
                 let path = format!("/user/repos?visibility={}&sort={}&per_page={}&affiliation=owner,collaborator,organization_member", visibility, sort, per_page);
 
                 let result = rt.block_on(self.get(&path));
                 match result {
                     Ok(repos) => {
-                        let _empty: Vec<serde_json::Value> = Vec::new(); let arr = repos.as_array().unwrap_or(&_empty);
+                        let _empty: Vec<serde_json::Value> = Vec::new();
+                        let arr = repos.as_array().unwrap_or(&_empty);
                         if arr.is_empty() {
                             return ToolResult::ok("No repositories found.");
                         }
@@ -340,7 +386,9 @@ impl IntegrationService for GithubIntegration {
                 match result {
                     Ok(repo_data) => {
                         let name = repo_data["full_name"].as_str().unwrap_or("?");
-                        let desc = repo_data["description"].as_str().unwrap_or("(no description)");
+                        let desc = repo_data["description"]
+                            .as_str()
+                            .unwrap_or("(no description)");
                         let stars = repo_data["stargazers_count"].as_u64().unwrap_or(0);
                         let forks = repo_data["forks_count"].as_u64().unwrap_or(0);
                         let issues = repo_data["open_issues_count"].as_u64().unwrap_or(0);
@@ -390,18 +438,23 @@ impl IntegrationService for GithubIntegration {
                 };
                 let state = args.get("state").and_then(|v| v.as_str()).unwrap_or("open");
                 let per_page = args.get("per_page").and_then(|v| v.as_u64()).unwrap_or(10);
-                let mut path = format!("/repos/{}/issues?state={}&per_page={}", repo, state, per_page);
+                let mut path = format!(
+                    "/repos/{}/issues?state={}&per_page={}",
+                    repo, state, per_page
+                );
                 if let Some(labels) = args.get("labels").and_then(|v| v.as_str()) {
                     path.push_str(&format!("&labels={}", labels));
                 }
                 let result = rt.block_on(self.get(&path));
                 match result {
                     Ok(issues) => {
-                        let _empty: Vec<serde_json::Value> = Vec::new(); let arr = issues.as_array().unwrap_or(&_empty);
+                        let _empty: Vec<serde_json::Value> = Vec::new();
+                        let arr = issues.as_array().unwrap_or(&_empty);
                         if arr.is_empty() {
                             return ToolResult::ok("No issues found.");
                         }
-                        let lines: Vec<String> = arr.iter().map(Self::format_issue_result).collect();
+                        let lines: Vec<String> =
+                            arr.iter().map(Self::format_issue_result).collect();
                         ToolResult::ok(lines.join("\n"))
                     }
                     Err(e) => ToolResult::err(e),
@@ -424,15 +477,18 @@ impl IntegrationService for GithubIntegration {
                         let user = issue["user"]["login"].as_str().unwrap_or("?");
                         let body = issue["body"].as_str().unwrap_or("");
                         let url = issue["html_url"].as_str().unwrap_or("");
-                        let labels: Vec<&str> = issue["labels"].as_array()
+                        let labels: Vec<&str> = issue["labels"]
+                            .as_array()
                             .map(|a| a.iter().filter_map(|l| l["name"].as_str()).collect())
                             .unwrap_or_default();
-                        let label_display = if labels.is_empty() { "none".to_string() } else { labels.join(", ") };
+                        let label_display = if labels.is_empty() {
+                            "none".to_string()
+                        } else {
+                            labels.join(", ")
+                        };
                         ToolResult::ok(format!(
                             "#{} {} [{}] by {}\n  Labels: {}\n  URL: {}\n\n{}",
-                            number, title, state, user,
-                            label_display,
-                            url, body
+                            number, title, state, user, label_display, url, body
                         ))
                     }
                     Err(e) => ToolResult::err(e),
@@ -452,7 +508,10 @@ impl IntegrationService for GithubIntegration {
                     None => return ToolResult::err("Missing required argument: body"),
                 };
                 let payload = json!({ "body": body_str });
-                let result = rt.block_on(self.post(&format!("/repos/{}/issues/{}/comments", repo, number), &payload));
+                let result = rt.block_on(self.post(
+                    &format!("/repos/{}/issues/{}/comments", repo, number),
+                    &payload,
+                ));
                 match result {
                     Ok(comment) => {
                         let url = comment["html_url"].as_str().unwrap_or("");
@@ -471,7 +530,8 @@ impl IntegrationService for GithubIntegration {
                     None => return ToolResult::err("Missing required argument: issue_number"),
                 };
                 let payload = json!({ "state": "closed" });
-                let result = rt.block_on(self.patch(&format!("/repos/{}/issues/{}", repo, number), &payload));
+                let result = rt
+                    .block_on(self.patch(&format!("/repos/{}/issues/{}", repo, number), &payload));
                 match result {
                     Ok(_) => ToolResult::ok(format!("Closed issue #{} in {}", number, repo)),
                     Err(e) => ToolResult::err(e),
@@ -488,7 +548,9 @@ impl IntegrationService for GithubIntegration {
                 };
                 let head = match args.get("head").and_then(|v| v.as_str()) {
                     Some(h) => h,
-                    None => return ToolResult::err("Missing required argument: head (source branch)"),
+                    None => {
+                        return ToolResult::err("Missing required argument: head (source branch)")
+                    }
                 };
                 let base = args.get("base").and_then(|v| v.as_str()).unwrap_or("main");
                 let body_str = args.get("body").and_then(|v| v.as_str()).unwrap_or("");
@@ -506,7 +568,10 @@ impl IntegrationService for GithubIntegration {
                         let num = pr["number"].as_u64().unwrap_or(0);
                         let url = pr["html_url"].as_str().unwrap_or("");
                         let draft_label = if draft { " (draft)" } else { "" };
-                        ToolResult::ok(format!("Created PR #{}:{}{}\n  {} -> {}\n  {}", num, title, draft_label, head, base, url))
+                        ToolResult::ok(format!(
+                            "Created PR #{}:{}{}\n  {} -> {}\n  {}",
+                            num, title, draft_label, head, base, url
+                        ))
                     }
                     Err(e) => ToolResult::err(e),
                 }
@@ -518,11 +583,15 @@ impl IntegrationService for GithubIntegration {
                 };
                 let state = args.get("state").and_then(|v| v.as_str()).unwrap_or("open");
                 let per_page = args.get("per_page").and_then(|v| v.as_u64()).unwrap_or(10);
-                let path = format!("/repos/{}/pulls?state={}&per_page={}", repo, state, per_page);
+                let path = format!(
+                    "/repos/{}/pulls?state={}&per_page={}",
+                    repo, state, per_page
+                );
                 let result = rt.block_on(self.get(&path));
                 match result {
                     Ok(prs) => {
-                        let _empty: Vec<serde_json::Value> = Vec::new(); let arr = prs.as_array().unwrap_or(&_empty);
+                        let _empty: Vec<serde_json::Value> = Vec::new();
+                        let arr = prs.as_array().unwrap_or(&_empty);
                         if arr.is_empty() {
                             return ToolResult::ok("No pull requests found.");
                         }
@@ -558,7 +627,17 @@ impl IntegrationService for GithubIntegration {
                         let status = if merged { "merged" } else { state };
                         ToolResult::ok(format!(
                             "#{} {} [{}] by {}\n  {} -> {}  (+{} -{} in {} files)\n  URL: {}\n\n{}",
-                            number, title, status, user, head, base, additions, deletions, files, url, body
+                            number,
+                            title,
+                            status,
+                            user,
+                            head,
+                            base,
+                            additions,
+                            deletions,
+                            files,
+                            url,
+                            body
                         ))
                     }
                     Err(e) => ToolResult::err(e),
@@ -574,18 +653,28 @@ impl IntegrationService for GithubIntegration {
                 let result = rt.block_on(self.get(&path));
                 match result {
                     Ok(data) => {
-                        let _empty: Vec<serde_json::Value> = Vec::new(); let items = data["items"].as_array().unwrap_or(&_empty);
+                        let _empty: Vec<serde_json::Value> = Vec::new();
+                        let items = data["items"].as_array().unwrap_or(&_empty);
                         if items.is_empty() {
                             return ToolResult::ok("No code results found.");
                         }
-                        let lines: Vec<String> = items.iter().map(|item| {
-                            let repo_name = item["repository"]["full_name"].as_str().unwrap_or("?");
-                            let path = item["path"].as_str().unwrap_or("?");
-                            let url = item["html_url"].as_str().unwrap_or("");
-                            format!("{}/{}  {}", repo_name, path, url)
-                        }).collect();
+                        let lines: Vec<String> = items
+                            .iter()
+                            .map(|item| {
+                                let repo_name =
+                                    item["repository"]["full_name"].as_str().unwrap_or("?");
+                                let path = item["path"].as_str().unwrap_or("?");
+                                let url = item["html_url"].as_str().unwrap_or("");
+                                format!("{}/{}  {}", repo_name, path, url)
+                            })
+                            .collect();
                         let total = data["total_count"].as_u64().unwrap_or(0);
-                        ToolResult::ok(format!("{} results (showing {}):\n{}", total, items.len(), lines.join("\n")))
+                        ToolResult::ok(format!(
+                            "{} results (showing {}):\n{}",
+                            total,
+                            items.len(),
+                            lines.join("\n")
+                        ))
                     }
                     Err(e) => ToolResult::err(e),
                 }
@@ -600,15 +689,19 @@ impl IntegrationService for GithubIntegration {
                 let result = rt.block_on(self.get(&path));
                 match result {
                     Ok(branches) => {
-                        let _empty: Vec<serde_json::Value> = Vec::new(); let arr = branches.as_array().unwrap_or(&_empty);
+                        let _empty: Vec<serde_json::Value> = Vec::new();
+                        let arr = branches.as_array().unwrap_or(&_empty);
                         if arr.is_empty() {
                             return ToolResult::ok("No branches found.");
                         }
-                        let lines: Vec<String> = arr.iter().map(|b| {
-                            let name = b["name"].as_str().unwrap_or("?");
-                            let protected = b["protected"].as_bool().unwrap_or(false);
-                            format!("{}{}", name, if protected { " [protected]" } else { "" })
-                        }).collect();
+                        let lines: Vec<String> = arr
+                            .iter()
+                            .map(|b| {
+                                let name = b["name"].as_str().unwrap_or("?");
+                                let protected = b["protected"].as_bool().unwrap_or(false);
+                                format!("{}{}", name, if protected { " [protected]" } else { "" })
+                            })
+                            .collect();
                         ToolResult::ok(lines.join("\n"))
                     }
                     Err(e) => ToolResult::err(e),

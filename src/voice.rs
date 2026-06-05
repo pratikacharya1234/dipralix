@@ -8,18 +8,14 @@ use std::sync::{Arc, Mutex};
 
 /// Check if a microphone is available.
 pub fn check_audio() -> bool {
-    cpal::default_host()
-        .default_input_device()
-        .is_some()
+    cpal::default_host().default_input_device().is_some()
 }
 
 /// Record audio from default mic for `duration_secs`. Returns WAV bytes.
 pub fn record_audio(duration_secs: u32) -> Result<Vec<u8>> {
     let host = cpal::default_host();
-    let device = host.default_input_device()
-        .context("No microphone found")?;
-    let config = device.default_input_config()
-        .context("No input config")?;
+    let device = host.default_input_device().context("No microphone found")?;
+    let config = device.default_input_config().context("No input config")?;
 
     let sample_rate = config.sample_rate().0;
     let channels = config.channels() as u16;
@@ -38,7 +34,9 @@ pub fn record_audio(duration_secs: u32) -> Result<Vec<u8>> {
                 &config.into(),
                 move |data: &[i16], _: &_| {
                     let mut buf = recorded_clone.lock().unwrap();
-                    for s in data { buf.extend_from_slice(&s.to_le_bytes()); }
+                    for s in data {
+                        buf.extend_from_slice(&s.to_le_bytes());
+                    }
                     if buf.len() / 2 >= samples_needed {
                         *running_clone.lock().unwrap() = false;
                     }
@@ -122,16 +120,27 @@ pub async fn transcribe_audio(audio_bytes: &[u8], api_key: &str) -> Result<Strin
     );
 
     let client = reqwest::Client::new();
-    let resp = client.post(&url).json(&body).send().await
+    let resp = client
+        .post(&url)
+        .json(&body)
+        .send()
+        .await
         .context("Transcription request failed")?;
     let status = resp.status();
     let body_text = resp.text().await?;
     if !status.is_success() {
-        anyhow::bail!("Transcription HTTP {}: {}", status, &body_text[..body_text.len().min(300)]);
+        anyhow::bail!(
+            "Transcription HTTP {}: {}",
+            status,
+            &body_text[..body_text.len().min(300)]
+        );
     }
     let parsed: serde_json::Value = serde_json::from_str(&body_text)?;
     let text = parsed["candidates"][0]["content"]["parts"][0]["text"]
-        .as_str().unwrap_or("").trim().to_string();
+        .as_str()
+        .unwrap_or("")
+        .trim()
+        .to_string();
 
     // Filter out model rambling — if response is way too long or contains "thinking" patterns
     if text.len() > 500 || text.contains("1.") && text.contains("2.") && text.contains("3.") {
@@ -155,10 +164,18 @@ pub async fn listen_and_transcribe(api_key: &str, duration_secs: u32) -> Result<
 pub async fn voice_prompt(api_key: &str, duration_secs: u32) -> Result<String> {
     use colored::Colorize;
     println!();
-    println!("  {} Recording... speak now ({}s)", "◉".bright_red(), duration_secs);
+    println!(
+        "  {} Recording... speak now ({}s)",
+        "◉".bright_red(),
+        duration_secs
+    );
     println!("  {}", "  (Press Ctrl+C to cancel)".dimmed());
     let audio = record_audio(duration_secs)?;
-    println!("  {} Recorded {:.1}KB — transcribing...", "⊕".green(), audio.len() as f64 / 1024.0);
+    println!(
+        "  {} Recorded {:.1}KB — transcribing...",
+        "⊕".green(),
+        audio.len() as f64 / 1024.0
+    );
     let text = transcribe_audio(&audio, api_key).await?;
     println!("  {} You said: {}", "⊢".cyan(), text.bright_white().bold());
     println!();

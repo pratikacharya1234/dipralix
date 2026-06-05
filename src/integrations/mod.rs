@@ -3,11 +3,11 @@ use std::collections::HashMap;
 use serde::Deserialize;
 use serde_json::Value;
 
-use crate::types::FunctionDeclaration;
 use crate::tools::{ToolContext, ToolResult};
+use crate::types::FunctionDeclaration;
 
-pub mod github;
 pub mod discord;
+pub mod github;
 pub mod google;
 
 // ── Integration Registry ─────────────────────────────────────────────────────
@@ -64,7 +64,9 @@ impl IntegrationRegistry {
 
         let service = match self.services.get(service_name) {
             Some(s) => s,
-            None => return ToolResult::err(format!("Integration service not found: {}", service_name)),
+            None => {
+                return ToolResult::err(format!("Integration service not found: {}", service_name))
+            }
         };
 
         let prefix = format!("{}__", service_name);

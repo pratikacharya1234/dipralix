@@ -2,10 +2,10 @@ use std::sync::Mutex;
 
 use serde_json::{json, Value};
 
-use crate::types::FunctionDeclaration;
 use crate::integrations::GoogleConfig;
 use crate::integrations::IntegrationService;
 use crate::tools::ToolResult;
+use crate::types::FunctionDeclaration;
 
 // ── Shared Google OAuth2 handler ─────────────────────────────────────────────
 
@@ -47,11 +47,19 @@ impl GoogleClient {
             .await
             .map_err(|e| format!("Failed to read token response: {}", e))?;
 
-        let data: Value = serde_json::from_str(&body)
-            .map_err(|e| format!("Failed to parse token response: {} - body: {}", e, truncate_g(&body, 200)))?;
+        let data: Value = serde_json::from_str(&body).map_err(|e| {
+            format!(
+                "Failed to parse token response: {} - body: {}",
+                e,
+                truncate_g(&body, 200)
+            )
+        })?;
 
         if let Some(error) = data.get("error").and_then(|v| v.as_str()) {
-            let desc = data.get("error_description").and_then(|v| v.as_str()).unwrap_or("");
+            let desc = data
+                .get("error_description")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
             return Err(format!("OAuth2 error: {} - {}", error, desc));
         }
 
@@ -69,20 +77,21 @@ impl GoogleClient {
     }
 
     async fn get_token(&self) -> Result<String, String> {
-        let token = self.access_token.lock().map_err(|e| format!("Lock error: {}", e))?;
+        let token = self
+            .access_token
+            .lock()
+            .map_err(|e| format!("Lock error: {}", e))?;
         if !token.is_empty() {
             return Ok(token.clone());
         }
         drop(token);
 
         if self.refresh_token.is_empty() {
-            return Err(
-                "No access token or refresh token configured.\n\
+            return Err("No access token or refresh token configured.\n\
                  Set [integrations.google] in ~/.forge/config.toml with:\n\
                  - client_id, client_secret, refresh_token\n\
                  See: https://console.cloud.google.com/apis/credentials"
-                    .to_string(),
-            );
+                .to_string());
         }
 
         self.refresh_access_token().await
@@ -99,7 +108,10 @@ impl GoogleClient {
             .map_err(|e| format!("Google API request failed: {}", e))?;
 
         let status = resp.status();
-        let body = resp.text().await.map_err(|e| format!("Read failed: {}", e))?;
+        let body = resp
+            .text()
+            .await
+            .map_err(|e| format!("Read failed: {}", e))?;
 
         if status.as_u16() == 401 {
             // Token expired, refresh and retry once
@@ -112,16 +124,27 @@ impl GoogleClient {
                 .await
                 .map_err(|e| format!("Retry failed: {}", e))?;
             let status2 = resp2.status();
-            let body2 = resp2.text().await.map_err(|e| format!("Read failed: {}", e))?;
+            let body2 = resp2
+                .text()
+                .await
+                .map_err(|e| format!("Read failed: {}", e))?;
             if !status2.is_success() {
-                return Err(format!("Google API HTTP {} (after refresh): {}", status2.as_u16(), truncate_g(&body2, 400)));
+                return Err(format!(
+                    "Google API HTTP {} (after refresh): {}",
+                    status2.as_u16(),
+                    truncate_g(&body2, 400)
+                ));
             }
             return serde_json::from_str(&body2)
                 .map_err(|e| format!("Parse error after refresh: {}", e));
         }
 
         if !status.is_success() {
-            return Err(format!("Google API HTTP {}: {}", status.as_u16(), truncate_g(&body, 400)));
+            return Err(format!(
+                "Google API HTTP {}: {}",
+                status.as_u16(),
+                truncate_g(&body, 400)
+            ));
         }
         serde_json::from_str(&body).map_err(|e| format!("Parse error: {}", e))
     }
@@ -139,7 +162,10 @@ impl GoogleClient {
             .map_err(|e| format!("Google API request failed: {}", e))?;
 
         let status = resp.status();
-        let text = resp.text().await.map_err(|e| format!("Read failed: {}", e))?;
+        let text = resp
+            .text()
+            .await
+            .map_err(|e| format!("Read failed: {}", e))?;
 
         if status.as_u16() == 401 {
             let new_token = self.refresh_access_token().await?;
@@ -153,15 +179,27 @@ impl GoogleClient {
                 .await
                 .map_err(|e| format!("Retry failed: {}", e))?;
             let status2 = resp2.status();
-            let text2 = resp2.text().await.map_err(|e| format!("Read failed: {}", e))?;
+            let text2 = resp2
+                .text()
+                .await
+                .map_err(|e| format!("Read failed: {}", e))?;
             if !status2.is_success() {
-                return Err(format!("Google API HTTP {} (after refresh): {}", status2.as_u16(), truncate_g(&text2, 400)));
+                return Err(format!(
+                    "Google API HTTP {} (after refresh): {}",
+                    status2.as_u16(),
+                    truncate_g(&text2, 400)
+                ));
             }
-            return serde_json::from_str(&text2).map_err(|e| format!("Parse error after refresh: {}", e));
+            return serde_json::from_str(&text2)
+                .map_err(|e| format!("Parse error after refresh: {}", e));
         }
 
         if !status.is_success() {
-            return Err(format!("Google API HTTP {}: {}", status.as_u16(), truncate_g(&text, 400)));
+            return Err(format!(
+                "Google API HTTP {}: {}",
+                status.as_u16(),
+                truncate_g(&text, 400)
+            ));
         }
         if text.is_empty() {
             return Ok(json!({}));
@@ -183,7 +221,10 @@ impl GoogleClient {
         if status.as_u16() == 204 {
             return Ok(json!({"deleted": true}));
         }
-        let body = resp.text().await.map_err(|e| format!("Read failed: {}", e))?;
+        let body = resp
+            .text()
+            .await
+            .map_err(|e| format!("Read failed: {}", e))?;
 
         if status.as_u16() == 401 {
             let new_token = self.refresh_access_token().await?;
@@ -198,15 +239,26 @@ impl GoogleClient {
             if status2.as_u16() == 204 {
                 return Ok(json!({"deleted": true}));
             }
-            let body2 = resp2.text().await.map_err(|e| format!("Read failed: {}", e))?;
+            let body2 = resp2
+                .text()
+                .await
+                .map_err(|e| format!("Read failed: {}", e))?;
             if !status2.is_success() {
-                return Err(format!("Google API HTTP {} (after refresh): {}", status2.as_u16(), truncate_g(&body2, 400)));
+                return Err(format!(
+                    "Google API HTTP {} (after refresh): {}",
+                    status2.as_u16(),
+                    truncate_g(&body2, 400)
+                ));
             }
             return Ok(json!({"deleted": true}));
         }
 
         if !status.is_success() {
-            return Err(format!("Google API HTTP {}: {}", status.as_u16(), truncate_g(&body, 400)));
+            return Err(format!(
+                "Google API HTTP {}: {}",
+                status.as_u16(),
+                truncate_g(&body, 400)
+            ));
         }
         Ok(json!({"deleted": true}))
     }
@@ -220,18 +272,26 @@ pub struct GDriveIntegration {
 
 impl GDriveIntegration {
     pub fn new(config: &GoogleConfig) -> Self {
-        GDriveIntegration { client: GoogleClient::new(config) }
+        GDriveIntegration {
+            client: GoogleClient::new(config),
+        }
     }
 
     fn format_file(file: &Value) -> String {
         let name = file["name"].as_str().unwrap_or("(unnamed)");
         let id = file["id"].as_str().unwrap_or("?");
         let mime = file["mimeType"].as_str().unwrap_or("?");
-        let size = file["size"].as_str().map(format_size).unwrap_or_else(|| "?".to_string());
+        let size = file["size"]
+            .as_str()
+            .map(format_size)
+            .unwrap_or_else(|| "?".to_string());
         let modified = file["modifiedTime"].as_str().unwrap_or("?");
         let is_folder = mime == "application/vnd.google-apps.folder";
         let kind = if is_folder { "[DIR]" } else { "[FILE]" };
-        format!("{}  {}  {}  {}  {}  {}", kind, name, id, size, mime, modified)
+        format!(
+            "{}  {}  {}  {}  {}  {}",
+            kind, name, id, size, mime, modified
+        )
     }
 }
 
@@ -333,15 +393,25 @@ impl IntegrationService for GDriveIntegration {
     fn call_tool(&self, tool_name: &str, args: Value) -> ToolResult {
         let rt = match tokio::runtime::Handle::try_current() {
             Ok(h) => h,
-            Err(_) => return ToolResult::err("No async runtime available for Google Drive API call"),
+            Err(_) => {
+                return ToolResult::err("No async runtime available for Google Drive API call")
+            }
         };
 
         match tool_name {
             "list_files" => {
-                let page_size = args.get("page_size").and_then(|v| v.as_u64()).unwrap_or(20).min(100);
-                let order_by = args.get("order_by").and_then(|v| v.as_str()).unwrap_or("modifiedTime desc");
+                let page_size = args
+                    .get("page_size")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(20)
+                    .min(100);
+                let order_by = args
+                    .get("order_by")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("modifiedTime desc");
                 let fields = "files(id,name,mimeType,size,modifiedTime,webViewLink,trashed)";
-                let mut url = format!(
+                let mut url =
+                    format!(
                     "https://www.googleapis.com/drive/v3/files?pageSize={}&orderBy={}&fields={}",
                     page_size, url_encode_g(order_by), fields
                 );
@@ -354,7 +424,8 @@ impl IntegrationService for GDriveIntegration {
                 let result = rt.block_on(self.client.api_get(&url));
                 match result {
                     Ok(data) => {
-                        let _empty: Vec<serde_json::Value> = Vec::new(); let files = data["files"].as_array().unwrap_or(&_empty);
+                        let _empty: Vec<serde_json::Value> = Vec::new();
+                        let files = data["files"].as_array().unwrap_or(&_empty);
                         if files.is_empty() {
                             return ToolResult::ok("No files found.");
                         }
@@ -378,12 +449,16 @@ impl IntegrationService for GDriveIntegration {
                     Ok(file) => {
                         let name = file["name"].as_str().unwrap_or("?");
                         let mime = file["mimeType"].as_str().unwrap_or("?");
-                        let size = file["size"].as_str().map(format_size).unwrap_or_else(|| "unknown".to_string());
+                        let size = file["size"]
+                            .as_str()
+                            .map(format_size)
+                            .unwrap_or_else(|| "unknown".to_string());
                         let created = file["createdTime"].as_str().unwrap_or("?");
                         let modified = file["modifiedTime"].as_str().unwrap_or("?");
                         let desc = file["description"].as_str().unwrap_or("");
                         let trashed = file["trashed"].as_bool().unwrap_or(false);
-                        let owners: Vec<&str> = file["owners"].as_array()
+                        let owners: Vec<&str> = file["owners"]
+                            .as_array()
                             .map(|a| a.iter().filter_map(|o| o["displayName"].as_str()).collect())
                             .unwrap_or_default();
                         let link = file["webViewLink"].as_str().unwrap_or("");
@@ -406,9 +481,15 @@ impl IntegrationService for GDriveIntegration {
                 let export_mime = args.get("mime_type").and_then(|v| v.as_str());
 
                 let url = if let Some(mime) = export_mime {
-                    format!("https://www.googleapis.com/drive/v3/files/{}/export?mimeType={}", file_id, mime)
+                    format!(
+                        "https://www.googleapis.com/drive/v3/files/{}/export?mimeType={}",
+                        file_id, mime
+                    )
                 } else {
-                    format!("https://www.googleapis.com/drive/v3/files/{}?alt=media", file_id)
+                    format!(
+                        "https://www.googleapis.com/drive/v3/files/{}?alt=media",
+                        file_id
+                    )
                 };
 
                 let result = rt.block_on(self.client.api_get(&url));
@@ -423,7 +504,10 @@ impl IntegrationService for GDriveIntegration {
                             ))
                         } else {
                             // For structured JSON responses instead of raw text
-                            ToolResult::ok(format!("File content:\n{}", serde_json::to_string_pretty(&data).unwrap_or_default()))
+                            ToolResult::ok(format!(
+                                "File content:\n{}",
+                                serde_json::to_string_pretty(&data).unwrap_or_default()
+                            ))
                         }
                     }
                     Err(e) => ToolResult::err(e),
@@ -434,7 +518,10 @@ impl IntegrationService for GDriveIntegration {
                     Some(n) => n,
                     None => return ToolResult::err("Missing required argument: name"),
                 };
-                let parent = args.get("parent_id").and_then(|v| v.as_str()).unwrap_or("root");
+                let parent = args
+                    .get("parent_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("root");
                 let payload = json!({
                     "name": name,
                     "mimeType": "application/vnd.google-apps.folder",
@@ -447,7 +534,10 @@ impl IntegrationService for GDriveIntegration {
                         let fid = folder["id"].as_str().unwrap_or("?");
                         let fname = folder["name"].as_str().unwrap_or("?");
                         let link = folder["webViewLink"].as_str().unwrap_or("");
-                        ToolResult::ok(format!("Created folder '{}' (ID: {})\nLink: {}", fname, fid, link))
+                        ToolResult::ok(format!(
+                            "Created folder '{}' (ID: {})\nLink: {}",
+                            fname, fid, link
+                        ))
                     }
                     Err(e) => ToolResult::err(e),
                 }
@@ -461,17 +551,26 @@ impl IntegrationService for GDriveIntegration {
                     Some(c) => c,
                     None => return ToolResult::err("Missing required argument: content"),
                 };
-                let mime = args.get("mime_type").and_then(|v| v.as_str()).unwrap_or("text/plain");
-                let parent = args.get("parent_id").and_then(|v| v.as_str()).unwrap_or("root");
+                let mime = args
+                    .get("mime_type")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("text/plain");
+                let parent = args
+                    .get("parent_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("root");
 
                 let boundary = "forge_upload_boundary";
                 let mut body = String::new();
                 body.push_str(&format!("--{}\r\n", boundary));
                 body.push_str("Content-Type: application/json\r\n\r\n");
-                body.push_str(&json!({
-                    "name": fname,
-                    "parents": [parent]
-                }).to_string());
+                body.push_str(
+                    &json!({
+                        "name": fname,
+                        "parents": [parent]
+                    })
+                    .to_string(),
+                );
                 body.push_str(&format!("\r\n--{}\r\n", boundary));
                 body.push_str(&format!("Content-Type: {}\r\n\r\n", mime));
                 body.push_str(content);
@@ -500,7 +599,10 @@ impl IntegrationService for GDriveIntegration {
                     Ok(file) => {
                         let fid = file["id"].as_str().unwrap_or("?");
                         let link = file["webViewLink"].as_str().unwrap_or("");
-                        ToolResult::ok(format!("Uploaded '{}' (ID: {})\nLink: {}", fname, fid, link))
+                        ToolResult::ok(format!(
+                            "Uploaded '{}' (ID: {})\nLink: {}",
+                            fname, fid, link
+                        ))
                     }
                     Err(e) => ToolResult::err(e),
                 }
@@ -510,7 +612,11 @@ impl IntegrationService for GDriveIntegration {
                     Some(q) => q,
                     None => return ToolResult::err("Missing required argument: query"),
                 };
-                let page_size = args.get("page_size").and_then(|v| v.as_u64()).unwrap_or(10).min(100);
+                let page_size = args
+                    .get("page_size")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(10)
+                    .min(100);
                 let url = format!(
                     "https://www.googleapis.com/drive/v3/files?q=fullText contains '{}' and trashed=false&pageSize={}&fields=files(id,name,mimeType,size,modifiedTime)",
                     query.replace('\'', "\\'"), page_size
@@ -518,7 +624,8 @@ impl IntegrationService for GDriveIntegration {
                 let result = rt.block_on(self.client.api_get(&url));
                 match result {
                     Ok(data) => {
-                        let _empty: Vec<serde_json::Value> = Vec::new(); let files = data["files"].as_array().unwrap_or(&_empty);
+                        let _empty: Vec<serde_json::Value> = Vec::new();
+                        let files = data["files"].as_array().unwrap_or(&_empty);
                         if files.is_empty() {
                             return ToolResult::ok("No files matching that query.");
                         }
@@ -553,7 +660,9 @@ pub struct GmailIntegration {
 
 impl GmailIntegration {
     pub fn new(config: &GoogleConfig) -> Self {
-        GmailIntegration { client: GoogleClient::new(config) }
+        GmailIntegration {
+            client: GoogleClient::new(config),
+        }
     }
 
     fn decode_base64url(data: &str) -> String {
@@ -582,7 +691,8 @@ impl GmailIntegration {
 
     fn format_email_preview(msg: &Value) -> String {
         let id = msg["id"].as_str().unwrap_or("?");
-        let _empty: Vec<serde_json::Value> = Vec::new(); let headers = msg["payload"]["headers"].as_array().unwrap_or(&_empty);
+        let _empty: Vec<serde_json::Value> = Vec::new();
+        let headers = msg["payload"]["headers"].as_array().unwrap_or(&_empty);
         let subject = Self::format_header(headers, "Subject");
         let from = Self::format_header(headers, "From");
         let date = Self::format_header(headers, "Date");
@@ -592,7 +702,14 @@ impl GmailIntegration {
             .map(|a| a.iter().any(|l| l.as_str() == Some("UNREAD")))
             .unwrap_or(false);
         let prefix = if unread { "[UNREAD]" } else { "[READ]  " };
-        format!("{} {}  {}  From: {}  {}", prefix, id, date, truncate_g(&from, 30), subject)
+        format!(
+            "{} {}  {}  From: {}  {}",
+            prefix,
+            id,
+            date,
+            truncate_g(&from, 30),
+            subject
+        )
     }
 }
 
@@ -709,10 +826,7 @@ impl IntegrationService for GmailIntegration {
                     None => return ToolResult::err("Missing required argument: body"),
                 };
 
-                let mut raw_headers = format!(
-                    "From: me\r\nTo: {}\r\nSubject: {}\r\n",
-                    to, subject
-                );
+                let mut raw_headers = format!("From: me\r\nTo: {}\r\nSubject: {}\r\n", to, subject);
                 if let Some(cc) = args.get("cc").and_then(|v| v.as_str()) {
                     raw_headers.push_str(&format!("Cc: {}\r\n", cc));
                 }
@@ -749,8 +863,15 @@ impl IntegrationService for GmailIntegration {
                 }
             }
             "list_emails" => {
-                let max = args.get("max_results").and_then(|v| v.as_u64()).unwrap_or(10).min(50);
-                let label = args.get("label").and_then(|v| v.as_str()).unwrap_or("INBOX");
+                let max = args
+                    .get("max_results")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(10)
+                    .min(50);
+                let label = args
+                    .get("label")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("INBOX");
                 let mut url = format!(
                     "https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults={}&labelIds={}",
                     max, label
@@ -762,7 +883,8 @@ impl IntegrationService for GmailIntegration {
                 let result = rt.block_on(self.client.api_get(&url));
                 match result {
                     Ok(data) => {
-                        let _empty: Vec<serde_json::Value> = Vec::new(); let messages = data["messages"].as_array().unwrap_or(&_empty);
+                        let _empty: Vec<serde_json::Value> = Vec::new();
+                        let messages = data["messages"].as_array().unwrap_or(&_empty);
                         if messages.is_empty() {
                             return ToolResult::ok("No emails found.");
                         }
@@ -796,7 +918,8 @@ impl IntegrationService for GmailIntegration {
                 let result = rt.block_on(self.client.api_get(&url));
                 match result {
                     Ok(msg) => {
-                        let _empty: Vec<serde_json::Value> = Vec::new(); let headers = msg["payload"]["headers"].as_array().unwrap_or(&_empty);
+                        let _empty: Vec<serde_json::Value> = Vec::new();
+                        let headers = msg["payload"]["headers"].as_array().unwrap_or(&_empty);
                         let subject = Self::format_header(headers, "Subject");
                         let from = Self::format_header(headers, "From");
                         let to = Self::format_header(headers, "To");
@@ -812,7 +935,16 @@ impl IntegrationService for GmailIntegration {
 
                         let parts = msg["payload"]["parts"].as_array();
                         let attachment_count = parts
-                            .map(|p| p.iter().filter(|part| part["filename"].as_str().map(|f| !f.is_empty()).unwrap_or(false)).count())
+                            .map(|p| {
+                                p.iter()
+                                    .filter(|part| {
+                                        part["filename"]
+                                            .as_str()
+                                            .map(|f| !f.is_empty())
+                                            .unwrap_or(false)
+                                    })
+                                    .count()
+                            })
                             .unwrap_or(0);
 
                         ToolResult::ok(format!(
@@ -828,19 +960,27 @@ impl IntegrationService for GmailIntegration {
                     Some(q) => q,
                     None => return ToolResult::err("Missing required argument: query"),
                 };
-                let max = args.get("max_results").and_then(|v| v.as_u64()).unwrap_or(20).min(100);
+                let max = args
+                    .get("max_results")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(20)
+                    .min(100);
                 let url = format!(
                     "https://gmail.googleapis.com/gmail/v1/users/me/messages?q={}&maxResults={}",
-                    url_encode_g(query), max
+                    url_encode_g(query),
+                    max
                 );
                 let result = rt.block_on(self.client.api_get(&url));
                 match result {
                     Ok(data) => {
-                        let _empty: Vec<serde_json::Value> = Vec::new(); let messages = data["messages"].as_array().unwrap_or(&_empty);
+                        let _empty: Vec<serde_json::Value> = Vec::new();
+                        let messages = data["messages"].as_array().unwrap_or(&_empty);
                         if messages.is_empty() {
                             return ToolResult::ok("No emails match that query.");
                         }
-                        let result_count = data["resultSizeEstimate"].as_u64().unwrap_or(messages.len() as u64);
+                        let result_count = data["resultSizeEstimate"]
+                            .as_u64()
+                            .unwrap_or(messages.len() as u64);
                         let mut lines = Vec::new();
                         for msg in messages.iter().take(20) {
                             if let Some(mid) = msg["id"].as_str() {
@@ -863,23 +1003,31 @@ impl IntegrationService for GmailIntegration {
                 }
             }
             "list_labels" => {
-                let result = rt.block_on(self.client.api_get(
-                    "https://gmail.googleapis.com/gmail/v1/users/me/labels",
-                ));
+                let result = rt.block_on(
+                    self.client
+                        .api_get("https://gmail.googleapis.com/gmail/v1/users/me/labels"),
+                );
                 match result {
                     Ok(data) => {
-                        let _empty: Vec<serde_json::Value> = Vec::new(); let labels = data["labels"].as_array().unwrap_or(&_empty);
+                        let _empty: Vec<serde_json::Value> = Vec::new();
+                        let labels = data["labels"].as_array().unwrap_or(&_empty);
                         if labels.is_empty() {
                             return ToolResult::ok("No labels found.");
                         }
-                        let lines: Vec<String> = labels.iter().map(|l| {
-                            let name = l["name"].as_str().unwrap_or("?");
-                            let id = l["id"].as_str().unwrap_or("?");
-                            let msg_total = l["messagesTotal"].as_u64().unwrap_or(0);
-                            let msg_unread = l["messagesUnread"].as_u64().unwrap_or(0);
-                            let ltype = l["type"].as_str().unwrap_or("user");
-                            format!("{} ({})  {} total / {} unread  [{}]", name, id, msg_total, msg_unread, ltype)
-                        }).collect();
+                        let lines: Vec<String> = labels
+                            .iter()
+                            .map(|l| {
+                                let name = l["name"].as_str().unwrap_or("?");
+                                let id = l["id"].as_str().unwrap_or("?");
+                                let msg_total = l["messagesTotal"].as_u64().unwrap_or(0);
+                                let msg_unread = l["messagesUnread"].as_u64().unwrap_or(0);
+                                let ltype = l["type"].as_str().unwrap_or("user");
+                                format!(
+                                    "{} ({})  {} total / {} unread  [{}]",
+                                    name, id, msg_total, msg_unread, ltype
+                                )
+                            })
+                            .collect();
                         ToolResult::ok(lines.join("\n"))
                     }
                     Err(e) => ToolResult::err(e),
@@ -892,7 +1040,10 @@ impl IntegrationService for GmailIntegration {
                 };
                 let payload = json!({ "removeLabelIds": ["UNREAD"] });
                 let result = rt.block_on(self.client.api_post(
-                    &format!("https://gmail.googleapis.com/gmail/v1/users/me/messages/{}/modify", email_id),
+                    &format!(
+                        "https://gmail.googleapis.com/gmail/v1/users/me/messages/{}/modify",
+                        email_id
+                    ),
                     &payload,
                 ));
                 match result {
@@ -905,9 +1056,10 @@ impl IntegrationService for GmailIntegration {
                     Some(id) => id,
                     None => return ToolResult::err("Missing required argument: email_id"),
                 };
-                let result = rt.block_on(self.client.api_delete(
-                    &format!("https://gmail.googleapis.com/gmail/v1/users/me/messages/{}", email_id),
-                ));
+                let result = rt.block_on(self.client.api_delete(&format!(
+                    "https://gmail.googleapis.com/gmail/v1/users/me/messages/{}",
+                    email_id
+                )));
                 match result {
                     Ok(_) => ToolResult::ok(format!("Email {} moved to trash.", email_id)),
                     Err(e) => ToolResult::err(e),

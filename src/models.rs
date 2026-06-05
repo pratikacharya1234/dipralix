@@ -50,13 +50,15 @@ pub fn filter_coding_models(models: &[ModelInfo]) -> Vec<ModelInfo> {
     ];
 
     // Junk display names from Gemini API (internal codenames)
-    let skip_displays: Vec<&str> = vec![
-        "nano banana", "nano", "banana",
-    ];
+    let skip_displays: Vec<&str> = vec!["nano banana", "nano", "banana"];
 
     // Non-coding model types that may advertise generateContent but don't work for chat
     let skip_keywords: Vec<&str> = vec![
-        "-tts", "tts-", "-embedding", "-imagen", "-veo",
+        "-tts",
+        "tts-",
+        "-embedding",
+        "-imagen",
+        "-veo",
         "-lite-preview",
     ];
 
@@ -75,7 +77,12 @@ pub fn filter_coding_models(models: &[ModelInfo]) -> Vec<ModelInfo> {
             let is_latest = !name.contains("1.0") && !name.contains("1.5");
             let has_junk_display = skip_displays.iter().any(|j| display.contains(*j));
             let is_non_coding = skip_keywords.iter().any(|k| name.contains(*k));
-            has_gemini && is_chat_model && is_relevant && is_latest && !has_junk_display && !is_non_coding
+            has_gemini
+                && is_chat_model
+                && is_relevant
+                && is_latest
+                && !has_junk_display
+                && !is_non_coding
         })
         .cloned()
         .collect();
@@ -168,13 +175,23 @@ pub async fn fetch_openai_models(api_key: &str) -> Result<Vec<(String, String)>>
     let parsed: OpenAIListResponse = serde_json::from_str(&body)?;
 
     let relevant = ["gpt-4", "gpt-4o", "gpt-4.1", "o1", "o3", "o4"];
-    let skip = ["instruct", "vision", "realtime", "audio", "search", "mini-2024", "preview-2024", "0125", "0613", "1106"];
+    let skip = [
+        "instruct",
+        "vision",
+        "realtime",
+        "audio",
+        "search",
+        "mini-2024",
+        "preview-2024",
+        "0125",
+        "0613",
+        "1106",
+    ];
     let mut out: Vec<(String, String)> = parsed
         .data
         .into_iter()
         .filter(|m| {
-            relevant.iter().any(|p| m.id.starts_with(p))
-                && !skip.iter().any(|s| m.id.contains(s))
+            relevant.iter().any(|p| m.id.starts_with(p)) && !skip.iter().any(|s| m.id.contains(s))
         })
         .map(|m| {
             let ctx = if m.id.contains("gpt-4.1") {
@@ -198,11 +215,7 @@ pub fn pick_best_model(models: &[ModelInfo], preferred: &str) -> String {
     let find = |name: &str| -> Option<String> {
         models
             .iter()
-            .find(|m| {
-                m.name
-                    .to_lowercase()
-                    .contains(&name.to_lowercase())
-            })
+            .find(|m| m.name.to_lowercase().contains(&name.to_lowercase()))
             .map(|m| m.name.clone())
     };
 
@@ -226,10 +239,9 @@ pub fn resolve_model_name(fetched: &[ModelInfo], requested: &str) -> String {
         .trim_start_matches("models/")
         .trim_start_matches("tunedModels/");
 
-    let exact = fetched.iter().find(|m| {
-        m.name == normalized
-            || m.name == format!("models/{}", normalized)
-    });
+    let exact = fetched
+        .iter()
+        .find(|m| m.name == normalized || m.name == format!("models/{}", normalized));
 
     if let Some(m) = exact {
         return m.name.clone();
@@ -280,7 +292,13 @@ pub fn resolve_best_model(fetched: &[ModelInfo]) -> String {
 
 /// Pick the best Claude model from the API response.
 pub fn resolve_best_anthropic(models: &[(String, String)]) -> String {
-    let preferences = ["claude-sonnet-4", "claude-4-sonnet", "claude-4-opus", "claude-3-5-sonnet", "claude-3-opus"];
+    let preferences = [
+        "claude-sonnet-4",
+        "claude-4-sonnet",
+        "claude-4-opus",
+        "claude-3-5-sonnet",
+        "claude-3-opus",
+    ];
     for pref in &preferences {
         for (id, _) in models {
             if id.contains(pref) {
@@ -288,7 +306,10 @@ pub fn resolve_best_anthropic(models: &[(String, String)]) -> String {
             }
         }
     }
-    models.first().map(|(id, _)| id.clone()).unwrap_or_else(|| "claude-sonnet-4-20250514".to_string())
+    models
+        .first()
+        .map(|(id, _)| id.clone())
+        .unwrap_or_else(|| "claude-sonnet-4-20250514".to_string())
 }
 
 /// Pick the best OpenAI model from the API response.
@@ -301,7 +322,10 @@ pub fn resolve_best_openai(models: &[(String, String)]) -> String {
             }
         }
     }
-    models.first().map(|(id, _)| id.clone()).unwrap_or_else(|| "gpt-4o".to_string())
+    models
+        .first()
+        .map(|(id, _)| id.clone())
+        .unwrap_or_else(|| "gpt-4o".to_string())
 }
 
 /// Pick a fallback model when the current one fails (rate limit, auth error, etc).
@@ -318,7 +342,9 @@ pub fn pick_fallback_model(current: &str, config: &crate::config::Config) -> (St
     let current_lower = current.to_lowercase();
     let is_gemini = current_lower.contains("gemini");
     let is_claude = current_lower.contains("claude");
-    let is_gpt = current_lower.contains("gpt") || current_lower.contains("o3") || current_lower.contains("o4");
+    let is_gpt = current_lower.contains("gpt")
+        || current_lower.contains("o3")
+        || current_lower.contains("o4");
 
     // Same-provider fallback first
     if is_gemini && !gemini_key.is_empty() {
