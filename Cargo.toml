@@ -9,6 +9,10 @@ authors = ["pratikacharya1234"]
 name = "dipralix-cli"
 path = "src/main.rs"
 
+[[bin]]
+name = "dipralix-server"
+path = "src/bin/server.rs"
+
 [features]
 default = []
 ember = ["cpal", "hound"]
@@ -36,3 +40,11 @@ cpal = { version = "0.15", optional = true }
 hound = { version = "3.5", optional = true }
 tree-sitter = "0.20"
 tree-sitter-rust = "0.20"
+thiserror = "1"
+notify = "6"
+jsonwebtoken = { version = "10", default-features = false, features = ["rust_crypto"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tokio-tungstenite = { version = "0.21", features = ["native-tls"] }
+rusqlite = { version = "0.31", features = ["bundled"] }
+blake3 = "1"
