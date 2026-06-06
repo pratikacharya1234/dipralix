@@ -23,11 +23,10 @@ use tokio::time::timeout;
 use dipralix::sync::protocol::SyncMessage;
 
 fn server_bin() -> PathBuf {
-    let mut p = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    p.push("target");
-    p.push("debug");
-    p.push("dipralix-server");
-    p
+    // Cargo sets `CARGO_BIN_EXE_<name>` for integration tests so
+    // they can find sibling binaries regardless of which target
+    // directory (debug / release) the test profile uses.
+    PathBuf::from(env!("CARGO_BIN_EXE_dipralix-server"))
 }
 
 fn free_port() -> u16 {

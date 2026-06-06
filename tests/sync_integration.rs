@@ -14,6 +14,7 @@ use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
+use serial_test::serial;
 use tokio::time::sleep;
 
 const TEST_ROOM: &str = "phase1-it";
@@ -41,9 +42,10 @@ fn port_for_test() -> u16 {
     0
 }
 
-/// The actual port the test server bound to. Set by `start_server`,
-/// read by `start_client`. Single-threaded test execution is
-/// assumed (which `nextest -j 1` and `cargo test` both provide).
+/// Backwards-compatible alias kept for any external consumer; the
+/// port is now passed explicitly between helpers. Internally the
+/// tests no longer rely on a global.
+#[allow(dead_code)]
 static PORT_HINT: std::sync::atomic::AtomicU16 = std::sync::atomic::AtomicU16::new(0);
 
 fn project_dir(suffix: &str) -> PathBuf {
@@ -61,7 +63,7 @@ fn project_dir(suffix: &str) -> PathBuf {
     dir
 }
 
-fn start_server(secret: &str, persist: Option<&std::path::Path>) -> Proc {
+fn start_server(secret: &str, persist: Option<&std::path::Path>) -> (Proc, u16) {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_dipralix-server"));
     cmd.arg("--port").arg(port_for_test().to_string());
     cmd.arg("--bind").arg("127.0.0.1");
@@ -105,17 +107,16 @@ fn start_server(secret: &str, persist: Option<&std::path::Path>) -> Proc {
     let proc = Proc(child);
     if let Some(p) = bound {
         PORT_HINT.store(p, std::sync::atomic::Ordering::SeqCst);
+        (proc, p)
     } else {
         panic!(
             "server did not print PORT=<num> within 2s; see {}",
             log_path.display()
         );
     }
-    proc
 }
 
-fn start_client(suffix: &str, project_root: &std::path::Path, user: &str, token: &str) -> Proc {
-    let port = PORT_HINT.load(std::sync::atomic::Ordering::SeqCst);
+fn start_client(port: u16, project_root: &std::path::Path, user: &str, token: &str) -> Proc {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_dipralix-cli"));
     cmd.arg("--sync");
     cmd.arg("--server").arg(format!("ws://127.0.0.1:{port}"));
@@ -126,7 +127,6 @@ fn start_client(suffix: &str, project_root: &std::path::Path, user: &str, token:
     cmd.arg("--explain");
     cmd.stdout(Stdio::null()).stderr(Stdio::null());
     let child = cmd.spawn().expect("spawn dipralix-cli");
-    let _ = suffix; // not used currently; reserved for parallel tests
     Proc(child)
 }
 
@@ -166,6 +166,7 @@ fn wait_for_file(path: &std::path::Path, deadline: Duration) -> Option<Vec<u8>> 
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[serial]
 async fn client_b_receives_client_a_write_within_1s() {
     let _ = tracing_subscriber::fmt()
         .with_env_filter(
@@ -178,7 +179,7 @@ async fn client_b_receives_client_a_write_within_1s() {
     let secret = "testsecret-phase1";
     let token = issue_token(secret, "alice");
 
-    let _server = start_server(secret, None);
+    let (_server, port) = start_server(secret, None);
 
     let a = project_dir("a");
     let b = project_dir("b");
@@ -187,8 +188,8 @@ async fn client_b_receives_client_a_write_within_1s() {
     std::fs::create_dir_all(a.join(".dipralix/memory")).unwrap();
     std::fs::create_dir_all(b.join(".dipralix/memory")).unwrap();
 
-    let client_a = start_client("a", &a, "alice", &token);
-    let client_b = start_client("b", &b, "bob", &token);
+    let client_a = start_client(port, &a, "alice", &token);
+    let client_b = start_client(port, &b, "bob", &token);
 
     // Give clients a moment to connect, receive JoinAck, and start
     // the filesystem watcher. The watcher needs to be live before we
@@ -219,6 +220,7 @@ async fn client_b_receives_client_a_write_within_1s() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[serial]
 async fn restart_with_persist_replays_state_to_new_client() {
     let _ = tracing_subscriber::fmt()
         .with_env_filter(
@@ -235,17 +237,19 @@ async fn restart_with_persist_replays_state_to_new_client() {
 
     // Phase 1a: server + 1 client, write a file.
     {
-        let _server = start_server(secret, Some(&db_path));
+        let (_server, port) = start_server(secret, Some(&db_path));
         let a = project_dir("persist-a");
         std::fs::create_dir_all(a.join(".dipralix/memory")).unwrap();
         let token = issue_token(secret, "alice");
-        let _client = start_client("persist-a", &a, "alice", &token);
+        let _client = start_client(port, &a, "alice", &token);
         // Give the client time to fully connect and start its
-        // filesystem watcher before we write the file.
-        sleep(Duration::from_secs(2)).await;
+        // filesystem watcher before we write the file. The poll
+        // watcher fires every 100ms so 3s leaves headroom for
+        // parallel-test CPU contention.
+        sleep(Duration::from_secs(3)).await;
         std::fs::write(a.join(".dipralix/memory/keep.md"), b"persistent").unwrap();
         // Wait long enough for the watcher → server → SQLite chain.
-        sleep(Duration::from_secs(3)).await;
+        sleep(Duration::from_secs(5)).await;
         // Tear down both server and client.
         drop(_client);
         drop(_server);
@@ -254,11 +258,11 @@ async fn restart_with_persist_replays_state_to_new_client() {
     // Phase 1b: fresh server, fresh client. The new client should
     // receive `keep.md` in its JoinAck snapshot.
     {
-        let _server = start_server(secret, Some(&db_path));
+        let (_server, port) = start_server(secret, Some(&db_path));
         let b = project_dir("persist-b");
         std::fs::create_dir_all(b.join(".dipralix/memory")).unwrap();
         let token = issue_token(secret, "alice");
-        let _client = start_client("persist-b", &b, "alice", &token);
+        let _client = start_client(port, &b, "alice", &token);
 
         let got = wait_for_file(&b.join(".dipralix/memory/keep.md"), Duration::from_secs(3));
         assert!(got.is_some(), "persisted file did not replay to new client");
@@ -270,6 +274,7 @@ async fn restart_with_persist_replays_state_to_new_client() {
 }
 
 #[tokio::test]
+#[serial]
 async fn bad_jwt_is_rejected() {
     use dipralix::sync::SyncError;
 
@@ -281,11 +286,10 @@ async fn bad_jwt_is_rejected() {
         .with_test_writer()
         .try_init();
 
-    let _server = start_server("goodsecret", None);
+    let (_server, port) = start_server("goodsecret", None);
     // Use a token issued for the wrong secret.
     let wrong_token = issue_token("badsecret", "alice");
 
-    let port = PORT_HINT.load(std::sync::atomic::Ordering::SeqCst);
     let url = format!("ws://127.0.0.1:{port}");
     let cfg = dipralix::sync::ClientConfig {
         server: url,
