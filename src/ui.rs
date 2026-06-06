@@ -118,6 +118,7 @@ pub fn print_help(
         ("/memorize <fact>", "save fact to persistent memory"),
         ("/forget <keyword>", "remove matching memory entries"),
         ("/memory", "view all memorized facts"),
+        ("/ledger [N]", "view the verified-outcome ledger"),
         ("/learnings", "view auto-learned error patterns"),
         ("/dna", "show auto-detected project conventions"),
         ("", ""),

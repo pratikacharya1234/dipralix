@@ -10,7 +10,7 @@ It's not the best at any one thing. It is the one I reach for first.
 $ dipralix-cli
   [MODEL] auto → claude-4-sonnet  (complex task → Claude balanced reasoning)
   [OK] Loaded .dipralix/safety.toml
-  v0.3.0  ·  17 tools  ·  4-level safety  ·  MCP enabled  ·  realtime sync
+  v0.3.1  ·  18 tools  ·  verified-outcome ledger  ·  4-level safety  ·  MCP enabled  ·  realtime sync
 
 >>> add rate limiting to the public /api/users endpoint, 60 rpm per IP
 
@@ -30,7 +30,7 @@ That's the whole loop. It plans, it does, it verifies, it tells you what happene
 
 ## ■ Install
 
-Pick the line for your machine. Each one drops the prebuilt v0.3.0 binaries (`dipralix-cli` and `dipralix-server`) on your PATH.
+Pick the line for your machine. Each one drops the prebuilt v0.3.1 binaries (`dipralix-cli` and `dipralix-server`) on your PATH.
 
 ```bash
 # macOS · Linux
@@ -63,7 +63,8 @@ That's it. No login server. No telemetry. No subscription. You can `dipralix-cli
 
 - **Two binaries.** `dipralix-cli` (the agent) and `dipralix-server` (the optional sync relay). Static, no Node, no Python, no Docker.
 - **Three providers, one interface.** Gemini, Claude, OpenAI. Default routing is `auto` — it reads your prompt and picks a model. Override with `--model gemini-2.5-pro` when you know better.
-- **17 tools.** Read, write, edit, append, bash, list, list_symbols, search, glob, mkdir, delete, move, copy, url_fetch, git_snapshot, memorize_decision, memorize_pattern.
+- **18 tools.** Read, write, edit, append, bash, list, list_symbols, search, glob, mkdir, delete, move, copy, url_fetch, git_snapshot, memorize_decision, memorize_pattern, record_outcome.
+- **Verified Outcome Ledger.** An append-only, per-repo log (`.dipralix/ledger/outcomes.jsonl`) of what the agent has actually *verified* — with the build/test proof attached, calibrated confidence, and temporal supersession when a past fact stops being true. The agent can't mark anything "verified" without a command that exited 0. Injected into its context each session, so it inherits what the repo already proved. `/ledger` to view.
 - **33 integration calls.** GitHub (12), Discord (7), Gmail (7), Drive (7). OAuth2 with auto-refresh.
 - **MCP client.** Speaks JSON-RPC 2.0 over stdio. Auto-discovers tools from any MCP server you start.
 - **4-level safety.** Allow, Warn, Confirm, Deny. Configurable per project in `.dipralix/safety.toml`.
@@ -168,6 +169,7 @@ The agent runs in a REPL. Slash commands cover the things you don't want to say 
 /docs sync                  regenerate ARCHITECTURE.md
 /approval                   show the approval matrix
 /infra security             scan Dockerfile / K8s / Terraform
+/ledger                     view the verified-outcome ledger (recent first)
 /fetch https://docs.rs/...  fetch + extract markdown, cached locally
 /fingerprint                detect stack, print quality score
 /cost                       what this session has cost
@@ -208,6 +210,7 @@ src/
   safety.rs          Risk classifier. Loads .dipralix/safety.toml.
   approval.rs        Per-action approval matrix. .dipralix/approval.toml.
   memory.rs          Persistent decisions + cross-project patterns.
+  ledger.rs          Verified Outcome Ledger — append-only proof-of-work log.
   context.rs         Lazy skill assembly from .dipralix/skills/.
   debate.rs          Red/Blue peer review on high-risk bash.
   comment_protocol.rs  Scans for // DIPRALIX: directives.

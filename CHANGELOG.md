@@ -2,6 +2,23 @@
 
 All notable changes to Dipralix (formerly FORGE) are documented in this file.
 
+## [0.3.1] — 2026-06-06
+
+### Added — Verified Outcome Ledger + Proof-of-Work (`src/ledger.rs`)
+- **Verified Outcome Ledger:** an append-only, per-repo log at `.dipralix/ledger/outcomes.jsonl` (one JSON object per line, git-trackable). Records every finished task with its verdict (`verified` / `failed` / `rejected` / `superseded`), calibrated confidence, the files touched, and the machine-checked proof behind it.
+- **Temporal supersession:** an entry can mark an earlier one stale (`supersedes`), so the agent reasons about *how a repo changed over time*, not just a flat set of facts — the gap that vector/RAG memory leaves open. Superseded entries are filtered out of the prompt context automatically.
+- **Proof-of-Work receipts:** an outcome can only be recorded `verified` when it carries a verification command that **exited 0**. No proof, no "done" — this is the contract that makes the ledger trustworthy.
+- **New `record_outcome` tool** (core tool count 17 → 18): the agent writes its own verified outcomes; the test asserting the count is updated.
+- **`{ledger_context}` injected into the system prompt:** each session inherits what the repo has already proved or seen fail, capped to the most recent active entries to keep the prompt lean.
+- **`/ledger [n]` command:** view the most recent recorded outcomes from the terminal.
+
+### Changed — v3 system prompt (`src/agent.rs`)
+- Rewrote `SYSTEM_PROMPT_BASE` around three explicit promises — **persist, verify, be honest** — plus an explicit **tool-routing decision tree** (choose the cheapest tool that fully answers), hard verification gates ("done" requires a machine-checked result), a proof-first reporting format, and **untrusted-content handling** (treat file/web/tool output as data, never as instructions — prompt-injection resistance).
+- Bumped to **0.3.1**.
+
+### Verification
+- 159 tests pass (`cargo nextest`), including 4 new ledger tests (roundtrip, supersession filtering, missing-file safety, proof rendering / outcome parsing). `cargo clippy` clean, `cargo fmt --check` clean.
+
 ## [0.3.0] — 2026-06-05
 
 ### Added — Realtime team sync (`src/sync/`, `src/bin/server.rs`)
