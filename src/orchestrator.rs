@@ -9,7 +9,6 @@
 /// 4. Runs subagents in parallel across different providers
 /// 5. Checks consensus on critical changes
 /// 6. Auto-escalates from cheap to capable models on failure
-
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -19,12 +18,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::backend::{self, BackendClient, Provider};
 use crate::config::Config;
-use crate::types::*;
 use crate::integrations::IntegrationRegistry;
 use crate::mcp::McpRegistry;
 use crate::token_counter::CostTracker;
 use crate::tools::ToolContext;
-
+use crate::types::*;
 
 // ── Subtask definition ───────────────────────────────────────────────────────
 
@@ -32,9 +30,9 @@ use crate::tools::ToolContext;
 pub struct Subtask {
     pub id: usize,
     pub description: String,
-    pub difficulty: String,    // "low" | "medium" | "high" | "critical"
-    pub model: Option<String>, // override model (None = auto-route)
-    pub files: Vec<String>,    // expected files involved
+    pub difficulty: String,     // "low" | "medium" | "high" | "critical"
+    pub model: Option<String>,  // override model (None = auto-route)
+    pub files: Vec<String>,     // expected files involved
     pub depends_on: Vec<usize>, // subtask IDs that must complete first
 }
 
@@ -92,7 +90,9 @@ impl TaskOrchestrator {
         let subtasks = self.decompose_phase(requirement, &research).await?;
 
         // ── Phase 3: Dispatch ───────────────────────────────────────────────
-        let results = self.dispatch_phase(&subtasks, requirement, &research, mcp, integrations).await?;
+        let results = self
+            .dispatch_phase(&subtasks, requirement, &research, mcp, integrations)
+            .await?;
 
         // ── Phase 4: Consensus ──────────────────────────────────────────────
         let verified = self.consensus_phase(&results, requirement).await?;
@@ -107,8 +107,14 @@ impl TaskOrchestrator {
     // ── Phase 1: Research Pipeline ──────────────────────────────────────────
 
     async fn research_phase(&self, requirement: &str) -> Result<String> {
-        println!("  {} Researching requirement...", "[PHASE 1/5]".cyan().bold());
-        println!("  {} Auto-searching web for relevant docs, APIs, and best practices", "│".dimmed());
+        println!(
+            "  {} Researching requirement...",
+            "[PHASE 1/5]".cyan().bold()
+        );
+        println!(
+            "  {} Auto-searching web for relevant docs, APIs, and best practices",
+            "│".dimmed()
+        );
 
         let queries = self.generate_research_queries(requirement);
         let mut research = String::from("## Pre-Execution Research\n\n");
@@ -159,7 +165,12 @@ impl TaskOrchestrator {
                 Ok(resp) => {
                     if let Some(text) = Self::extract_text(resp) {
                         research.push_str(&format!("### {}\n\n{}\n\n", query, text));
-                        println!("  {} Research complete: \"{}\" ({} chars)", "│".dimmed(), query.dimmed(), text.len());
+                        println!(
+                            "  {} Research complete: \"{}\" ({} chars)",
+                            "│".dimmed(),
+                            query.dimmed(),
+                            text.len()
+                        );
                     }
                 }
                 Err(e) => {
@@ -170,10 +181,17 @@ impl TaskOrchestrator {
         }
 
         if research.len() < 50 {
-            research.push_str("(No research results available — proceeding with general knowledge)\n\n");
+            research.push_str(
+                "(No research results available — proceeding with general knowledge)\n\n",
+            );
         } else {
             let research_chars = research.len();
-            println!("  {} Research gathered: {} chars across {} queries", "│".dimmed(), research_chars, queries.len());
+            println!(
+                "  {} Research gathered: {} chars across {} queries",
+                "│".dimmed(),
+                research_chars,
+                queries.len()
+            );
         }
         println!();
 
@@ -182,9 +200,7 @@ impl TaskOrchestrator {
 
     fn generate_research_queries(&self, requirement: &str) -> Vec<String> {
         let lower = requirement.to_lowercase();
-        let mut queries = vec![
-            format!("best practices {}", requirement),
-        ];
+        let mut queries = vec![format!("best practices {}", requirement)];
 
         // Add tech-specific queries
         if lower.contains("rust") || lower.contains("cargo") {
@@ -194,7 +210,10 @@ impl TaskOrchestrator {
             queries.push(format!("API design patterns {}", requirement));
         }
         if lower.contains("auth") || lower.contains("jwt") || lower.contains("oauth") {
-            queries.push(format!("authentication security best practices {}", requirement));
+            queries.push(format!(
+                "authentication security best practices {}",
+                requirement
+            ));
         }
         if lower.contains("test") || lower.contains("testing") {
             queries.push(format!("testing strategy {}", requirement));
@@ -217,10 +236,18 @@ impl TaskOrchestrator {
     // ── Phase 2: Task Decomposition ─────────────────────────────────────────
 
     async fn decompose_phase(&self, requirement: &str, research: &str) -> Result<Vec<Subtask>> {
-        println!("  {} Decomposing task into subtasks...", "[PHASE 2/5]".cyan().bold());
+        println!(
+            "  {} Decomposing task into subtasks...",
+            "[PHASE 2/5]".cyan().bold()
+        );
 
         // Use a reasoning-capable model for decomposition
-        let decompose_model = if self.config.anthropic_api_key.as_deref().is_some_and(|k| !k.is_empty()) {
+        let decompose_model = if self
+            .config
+            .anthropic_api_key
+            .as_deref()
+            .is_some_and(|k| !k.is_empty())
+        {
             "claude-4-sonnet"
         } else if self.config.model.contains("pro") {
             &self.config.model
@@ -268,7 +295,10 @@ impl TaskOrchestrator {
         );
 
         let req = GenerateContentRequest {
-            contents: vec![Content { role: "user".into(), parts: vec![Part::text(&decompose_prompt)] }],
+            contents: vec![Content {
+                role: "user".into(),
+                parts: vec![Part::text(&decompose_prompt)],
+            }],
             tools: vec![],
             tool_config: None,
             system_instruction: None,
@@ -284,20 +314,25 @@ impl TaskOrchestrator {
             .ok_or_else(|| anyhow::anyhow!("Failed to get decomposition response"))?;
 
         // Parse JSON from response (handle markdown code fences)
-        let json_str = text.trim()
+        let json_str = text
+            .trim()
             .trim_start_matches("```json")
             .trim_start_matches("```")
             .trim_end_matches("```")
             .trim();
 
-        let subtasks: Vec<Subtask> = serde_json::from_str(json_str)
-            .context("Failed to parse task decomposition JSON")?;
+        let subtasks: Vec<Subtask> =
+            serde_json::from_str(json_str).context("Failed to parse task decomposition JSON")?;
 
         if subtasks.is_empty() {
             anyhow::bail!("Decomposition returned no subtasks");
         }
 
-        println!("  {} Decomposed into {} subtasks:", "│".dimmed(), subtasks.len());
+        println!(
+            "  {} Decomposed into {} subtasks:",
+            "│".dimmed(),
+            subtasks.len()
+        );
         for st in &subtasks {
             let diff_color = match st.difficulty.as_str() {
                 "critical" => "CRITICAL".red(),
@@ -309,7 +344,15 @@ impl TaskOrchestrator {
             } else {
                 format!(" (after: {:?})", st.depends_on)
             };
-            println!("  {} [{}. {}] {} — {}{}", "│".dimmed(), st.id, diff_color, st.description.dimmed(), "▸".dimmed(), deps);
+            println!(
+                "  {} [{}. {}] {} — {}{}",
+                "│".dimmed(),
+                st.id,
+                diff_color,
+                st.description.dimmed(),
+                "▸".dimmed(),
+                deps
+            );
         }
         println!();
 
@@ -337,9 +380,16 @@ impl TaskOrchestrator {
         let res_shared = Arc::new(research.to_string());
 
         for (level, batch) in levels.iter().enumerate() {
-            if batch.is_empty() { continue; }
+            if batch.is_empty() {
+                continue;
+            }
 
-            println!("  {} Level {} — {} parallel subtask(s)", "│".dimmed(), level + 1, batch.len());
+            println!(
+                "  {} Level {} — {} parallel subtask(s)",
+                "│".dimmed(),
+                level + 1,
+                batch.len()
+            );
 
             let mut futures = Vec::new();
             for subtask in batch {
@@ -350,8 +400,15 @@ impl TaskOrchestrator {
                 let int_clone = integrations.clone();
 
                 futures.push(async move {
-                    println!("  {} [{}] {} → {}", "│".dimmed(), subtask.id, subtask.description.dimmed(), model.cyan());
-                    let result = run_subtask(subtask, &req, &res, &model, mcp_clone, int_clone).await;
+                    println!(
+                        "  {} [{}] {} → {}",
+                        "│".dimmed(),
+                        subtask.id,
+                        subtask.description.dimmed(),
+                        model.cyan()
+                    );
+                    let result =
+                        run_subtask(subtask, &req, &res, &model, mcp_clone, int_clone).await;
                     (subtask.clone(), result, model)
                 });
             }
@@ -361,9 +418,15 @@ impl TaskOrchestrator {
                 match result {
                     Ok(summary) => {
                         let success = !summary.contains("FAILED") && !summary.contains("ERROR");
-                        println!("  {} [{}] {} {}", "│".dimmed(),
+                        println!(
+                            "  {} [{}] {} {}",
+                            "│".dimmed(),
                             subtask.id,
-                            if success { "DONE".green() } else { "DONE*".yellow() },
+                            if success {
+                                "DONE".green()
+                            } else {
+                                "DONE*".yellow()
+                            },
                             summary.lines().next().unwrap_or("").dimmed()
                         );
                         self.record_model_result(&model, success);
@@ -378,20 +441,48 @@ impl TaskOrchestrator {
                         });
                     }
                     Err(e) => {
-                        println!("  {} [{}] {} {}", "│".dimmed(), subtask.id, "FAIL".red(), e.to_string().red());
+                        println!(
+                            "  {} [{}] {} {}",
+                            "│".dimmed(),
+                            subtask.id,
+                            "FAIL".red(),
+                            e.to_string().red()
+                        );
                         self.record_model_result(&model, false);
 
                         // Auto-escalation: retry with better model
                         let escalated = self.escalate_model(&model);
                         if escalated != model {
-                            println!("  {} [{}] Escalating: {} → {}", "│".dimmed(), subtask.id, model.cyan(), escalated.cyan());
-                            let retry = run_subtask(&subtask, &req_shared, &res_shared, &escalated, mcp.clone(), integrations.clone()).await;
+                            println!(
+                                "  {} [{}] Escalating: {} → {}",
+                                "│".dimmed(),
+                                subtask.id,
+                                model.cyan(),
+                                escalated.cyan()
+                            );
+                            let retry = run_subtask(
+                                &subtask,
+                                &req_shared,
+                                &res_shared,
+                                &escalated,
+                                mcp.clone(),
+                                integrations.clone(),
+                            )
+                            .await;
                             match retry {
                                 Ok(summary) => {
                                     let success = !summary.contains("FAILED");
-                                    println!("  {} [{}] {} (escalated to {})", "│".dimmed(), subtask.id,
-                                        if success { "DONE".green() } else { "DONE*".yellow() },
-                                        escalated.cyan());
+                                    println!(
+                                        "  {} [{}] {} (escalated to {})",
+                                        "│".dimmed(),
+                                        subtask.id,
+                                        if success {
+                                            "DONE".green()
+                                        } else {
+                                            "DONE*".yellow()
+                                        },
+                                        escalated.cyan()
+                                    );
                                     self.record_model_result(&escalated, success);
                                     all_results.push(SubtaskResult {
                                         subtask: subtask.clone(),
@@ -439,20 +530,26 @@ impl TaskOrchestrator {
 
         match subtask.difficulty.as_str() {
             "critical" | "high" => {
-                if self.config.anthropic_api_key.as_deref().is_some_and(|k| !k.is_empty()) {
+                if self
+                    .config
+                    .anthropic_api_key
+                    .as_deref()
+                    .is_some_and(|k| !k.is_empty())
+                {
                     "claude-4-sonnet".into()
-                } else if self.config.openai_api_key.as_deref().is_some_and(|k| !k.is_empty()) {
+                } else if self
+                    .config
+                    .openai_api_key
+                    .as_deref()
+                    .is_some_and(|k| !k.is_empty())
+                {
                     "o3".into()
                 } else {
                     "gemini-3-pro".into()
                 }
             }
-            "low" => {
-                "gemini-2.5-flash-lite".into()
-            }
-            _ => {
-                "gemini-2.5-flash".into()
-            }
+            "low" => "gemini-2.5-flash-lite".into(),
+            _ => "gemini-2.5-flash".into(),
         }
     }
 
@@ -461,7 +558,13 @@ impl TaskOrchestrator {
         match provider {
             Provider::Gemini => "gemini-3-pro".into(),
             Provider::Anthropic => {
-                if current.contains("sonnet") && self.config.openai_api_key.as_deref().is_some_and(|k| !k.is_empty()) {
+                if current.contains("sonnet")
+                    && self
+                        .config
+                        .openai_api_key
+                        .as_deref()
+                        .is_some_and(|k| !k.is_empty())
+                {
                     "o3".into()
                 } else {
                     "claude-4-sonnet".into()
@@ -470,7 +573,12 @@ impl TaskOrchestrator {
             Provider::OpenAI => {
                 if current.contains("o3") || current.contains("o4") {
                     current.to_string() // already max
-                } else if self.config.anthropic_api_key.as_deref().is_some_and(|k| !k.is_empty()) {
+                } else if self
+                    .config
+                    .anthropic_api_key
+                    .as_deref()
+                    .is_some_and(|k| !k.is_empty())
+                {
                     "claude-4-sonnet".into()
                 } else {
                     "gemini-3-pro".into()
@@ -496,40 +604,72 @@ impl TaskOrchestrator {
         results: &[SubtaskResult],
         requirement: &str,
     ) -> Result<Vec<SubtaskResult>> {
-        let critical: Vec<&SubtaskResult> = results.iter()
+        let critical: Vec<&SubtaskResult> = results
+            .iter()
             .filter(|r| r.subtask.difficulty == "critical" && r.success)
             .collect();
 
         if critical.is_empty() {
-            println!("  {} No critical subtasks — skipping consensus check", "[PHASE 4/5]".cyan().bold());
+            println!(
+                "  {} No critical subtasks — skipping consensus check",
+                "[PHASE 4/5]".cyan().bold()
+            );
             println!();
             return Ok(results.to_vec());
         }
 
-        println!("  {} Running consensus check on {} critical subtask(s)...", "[PHASE 4/5]".cyan().bold(), critical.len());
+        println!(
+            "  {} Running consensus check on {} critical subtask(s)...",
+            "[PHASE 4/5]".cyan().bold(),
+            critical.len()
+        );
 
         let mut verified = results.to_vec();
 
         for result in &critical {
-            println!("  {} [{}] Verifying with second model...", "│".dimmed(), result.subtask.id);
+            println!(
+                "  {} [{}] Verifying with second model...",
+                "│".dimmed(),
+                result.subtask.id
+            );
 
             // Pick a different model for verification
             let verifier_model = if result.model_used.contains("gemini") {
-                if self.config.anthropic_api_key.as_deref().is_some_and(|k| !k.is_empty()) {
+                if self
+                    .config
+                    .anthropic_api_key
+                    .as_deref()
+                    .is_some_and(|k| !k.is_empty())
+                {
                     "claude-4-sonnet"
-                } else if self.config.openai_api_key.as_deref().is_some_and(|k| !k.is_empty()) {
+                } else if self
+                    .config
+                    .openai_api_key
+                    .as_deref()
+                    .is_some_and(|k| !k.is_empty())
+                {
                     "o3"
                 } else {
                     &result.model_used // fallback to same model
                 }
             } else if result.model_used.contains("claude") {
-                if self.config.openai_api_key.as_deref().is_some_and(|k| !k.is_empty()) {
+                if self
+                    .config
+                    .openai_api_key
+                    .as_deref()
+                    .is_some_and(|k| !k.is_empty())
+                {
                     "o3"
                 } else {
                     "gemini-3-pro"
                 }
             } else {
-                if self.config.anthropic_api_key.as_deref().is_some_and(|k| !k.is_empty()) {
+                if self
+                    .config
+                    .anthropic_api_key
+                    .as_deref()
+                    .is_some_and(|k| !k.is_empty())
+                {
                     "claude-4-sonnet"
                 } else {
                     "gemini-3-pro"
@@ -559,7 +699,10 @@ impl TaskOrchestrator {
             match BackendClient::new(&vc_config) {
                 Ok(client) => {
                     let req = GenerateContentRequest {
-                        contents: vec![Content { role: "user".into(), parts: vec![Part::text(&review_prompt)] }],
+                        contents: vec![Content {
+                            role: "user".into(),
+                            parts: vec![Part::text(&review_prompt)],
+                        }],
                         tools: vec![],
                         tool_config: None,
                         system_instruction: None,
@@ -574,28 +717,58 @@ impl TaskOrchestrator {
                         Ok(resp) => {
                             if let Some(verdict) = Self::extract_text(&resp) {
                                 if verdict.to_uppercase().contains("APPROVED") {
-                                    println!("  {} [{}] {} Consensus: APPROVED", "│".dimmed(), result.subtask.id, "◈".green());
+                                    println!(
+                                        "  {} [{}] {} Consensus: APPROVED",
+                                        "│".dimmed(),
+                                        result.subtask.id,
+                                        "◈".green()
+                                    );
                                 } else if verdict.to_uppercase().contains("REJECTED") {
-                                    println!("  {} [{}] {} Consensus: REJECTED — {}", "│".dimmed(), result.subtask.id, "⊗".red(), verdict.lines().next().unwrap_or("").dimmed());
+                                    println!(
+                                        "  {} [{}] {} Consensus: REJECTED — {}",
+                                        "│".dimmed(),
+                                        result.subtask.id,
+                                        "⊗".red(),
+                                        verdict.lines().next().unwrap_or("").dimmed()
+                                    );
                                     // Mark as needing review
                                     for v in &mut verified {
                                         if v.subtask.id == result.subtask.id {
-                                            v.summary = format!("[CONSENSUS REJECTED by {}] {}", verifier_model, verdict);
+                                            v.summary = format!(
+                                                "[CONSENSUS REJECTED by {}] {}",
+                                                verifier_model, verdict
+                                            );
                                             v.success = false;
                                         }
                                     }
                                 } else {
-                                    println!("  {} [{}] {} Consensus: CONCERNS — {}", "│".dimmed(), result.subtask.id, "⌬".yellow(), verdict.lines().next().unwrap_or("").dimmed());
+                                    println!(
+                                        "  {} [{}] {} Consensus: CONCERNS — {}",
+                                        "│".dimmed(),
+                                        result.subtask.id,
+                                        "⌬".yellow(),
+                                        verdict.lines().next().unwrap_or("").dimmed()
+                                    );
                                 }
                             }
                         }
                         Err(e) => {
-                            println!("  {} [{}] Consensus check failed: {}", "│".dimmed(), result.subtask.id, e.to_string().red());
+                            println!(
+                                "  {} [{}] Consensus check failed: {}",
+                                "│".dimmed(),
+                                result.subtask.id,
+                                e.to_string().red()
+                            );
                         }
                     }
                 }
                 Err(e) => {
-                    println!("  {} [{}] Cannot create verifier: {}", "│".dimmed(), result.subtask.id, e.to_string().red());
+                    println!(
+                        "  {} [{}] Cannot create verifier: {}",
+                        "│".dimmed(),
+                        result.subtask.id,
+                        e.to_string().red()
+                    );
                 }
             }
         }
@@ -606,11 +779,7 @@ impl TaskOrchestrator {
 
     // ── Phase 5: Merge ──────────────────────────────────────────────────────
 
-    async fn merge_phase(
-        &self,
-        results: &[SubtaskResult],
-        requirement: &str,
-    ) -> Result<String> {
+    async fn merge_phase(&self, results: &[SubtaskResult], requirement: &str) -> Result<String> {
         println!("  {} Merging results...", "[PHASE 5/5]".cyan().bold());
 
         let succeeded: Vec<_> = results.iter().filter(|r| r.success).collect();
@@ -634,12 +803,20 @@ impl TaskOrchestrator {
         report.push_str("\n### Models Used\n\n");
         for (model, count) in &model_usage {
             let stats = self.model_stats.get(model);
-            let success_rate = stats.map(|s| {
-                let total = s.successes + s.failures;
-                if total > 0 { format!("{:.0}% success", s.successes as f32 / total as f32 * 100.0) }
-                else { "N/A".into() }
-            }).unwrap_or_else(|| "N/A".into());
-            report.push_str(&format!("- **{}** — {} subtask(s), {}\n", model, count, success_rate));
+            let success_rate = stats
+                .map(|s| {
+                    let total = s.successes + s.failures;
+                    if total > 0 {
+                        format!("{:.0}% success", s.successes as f32 / total as f32 * 100.0)
+                    } else {
+                        "N/A".into()
+                    }
+                })
+                .unwrap_or_else(|| "N/A".into());
+            report.push_str(&format!(
+                "- **{}** — {} subtask(s), {}\n",
+                model, count, success_rate
+            ));
         }
 
         report.push_str("\n## Results\n\n");
@@ -668,15 +845,27 @@ impl TaskOrchestrator {
         // Print summary to terminal
         let pass_count = succeeded.len();
         let total = results.len();
-        println!("  {} {}/{} subtasks passed", "│".dimmed(), pass_count, total);
+        println!(
+            "  {} {}/{} subtasks passed",
+            "│".dimmed(),
+            pass_count,
+            total
+        );
         if failed.is_empty() {
             println!("  {} All subtasks completed successfully", "└".cyan());
         } else {
-            println!("  {} {} subtask(s) need attention", "└".yellow(), failed.len());
+            println!(
+                "  {} {} subtask(s) need attention",
+                "└".yellow(),
+                failed.len()
+            );
         }
 
         // Save report
-        let report_path = format!("task_report_{}.md", chrono::Local::now().format("%Y%m%d_%H%M%S"));
+        let report_path = format!(
+            "task_report_{}.md",
+            chrono::Local::now().format("%Y%m%d_%H%M%S")
+        );
         std::fs::write(&report_path, &report)?;
         println!("  {} Report saved: {}", "▸".dimmed(), report_path.cyan());
 
@@ -686,11 +875,24 @@ impl TaskOrchestrator {
     // ── Helpers ─────────────────────────────────────────────────────────────
 
     fn extract_text(resp: &GenerateContentResponse) -> Option<String> {
-        resp.candidates.as_ref()?.first()?.content.as_ref()?.parts.iter()
+        resp.candidates
+            .as_ref()?
+            .first()?
+            .content
+            .as_ref()?
+            .parts
+            .iter()
             .filter_map(|p| {
-                if let Part::Text { text, thought: None | Some(false), .. } = p {
+                if let Part::Text {
+                    text,
+                    thought: None | Some(false),
+                    ..
+                } = p
+                {
                     Some(text.clone())
-                } else { None }
+                } else {
+                    None
+                }
             })
             .collect::<Vec<_>>()
             .join("\n")
@@ -708,22 +910,28 @@ async fn run_subtask(
     mcp: Option<Arc<McpRegistry>>,
     integrations: Option<Arc<IntegrationRegistry>>,
 ) -> Result<String> {
-    let mut cfg = Config::default();
-    cfg.model = model.to_string();
-    cfg.api_key = std::env::var("DIPRALIX_API_KEY")
-        .or_else(|_| std::env::var("GEMINI_API_KEY"))
-        .unwrap_or_default();
+    let mut cfg = Config {
+        model: model.to_string(),
+        api_key: std::env::var("DIPRALIX_API_KEY")
+            .or_else(|_| std::env::var("GEMINI_API_KEY"))
+            .unwrap_or_default(),
+        ..Config::default()
+    };
 
     // Load keys from environment
     if let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
-        if !key.is_empty() { cfg.anthropic_api_key = Some(key); }
+        if !key.is_empty() {
+            cfg.anthropic_api_key = Some(key);
+        }
     }
     if let Ok(key) = std::env::var("OPENAI_API_KEY") {
-        if !key.is_empty() { cfg.openai_api_key = Some(key); }
+        if !key.is_empty() {
+            cfg.openai_api_key = Some(key);
+        }
     }
 
     cfg.max_iterations = 20; // Subagent gets fewer iterations
-    cfg.auto_apply = true;   // Subagents auto-apply (no interactive prompts)
+    cfg.auto_apply = true; // Subagents auto-apply (no interactive prompts)
 
     let client = BackendClient::new(&cfg)?;
     let mut history: Vec<Content> = Vec::new();
@@ -779,7 +987,8 @@ async fn run_subtask(
             parts: vec![Part::text(&sys_prompt)],
         };
 
-        let tools_list = vec![serde_json::json!({ "functionDeclarations": tools::get_tool_declarations() })];
+        let tools_list =
+            vec![serde_json::json!({ "functionDeclarations": tools::get_tool_declarations() })];
 
         let gen_cfg = Some(GenerationConfig {
             temperature: Some(0.5),
@@ -791,7 +1000,9 @@ async fn run_subtask(
             contents: history.clone(),
             tools: tools_list,
             tool_config: Some(ToolConfig {
-                function_calling_config: FunctionCallingConfig { mode: "AUTO".into() },
+                function_calling_config: FunctionCallingConfig {
+                    mode: "AUTO".into(),
+                },
             }),
             system_instruction: Some(sys),
             generation_config: gen_cfg,
@@ -811,7 +1022,11 @@ async fn run_subtask(
                 if let Some(content) = &candidate.content {
                     for part in &content.parts {
                         match part {
-                            Part::Text { text, thought: None | Some(false), .. } => {
+                            Part::Text {
+                                text,
+                                thought: None | Some(false),
+                                ..
+                            } => {
                                 text_parts.push(text.clone());
                             }
                             Part::FunctionCall { function_call, .. } => {
@@ -842,7 +1057,10 @@ async fn run_subtask(
         if model_parts.is_empty() {
             model_parts.push(Part::text("(no output)"));
         }
-        history.push(Content { role: "model".into(), parts: model_parts });
+        history.push(Content {
+            role: "model".into(),
+            parts: model_parts,
+        });
 
         if let Some(usage) = &response.usage_metadata {
             let t = usage.total_token_count.unwrap_or(0);
@@ -876,7 +1094,10 @@ async fn run_subtask(
                 },
             });
         }
-        history.push(Content { role: "user".into(), parts: response_parts });
+        history.push(Content {
+            role: "user".into(),
+            parts: response_parts,
+        });
     }
 
     Ok("Completed".into())

@@ -1,9 +1,9 @@
 use serde_json::{json, Value};
 
-use crate::types::FunctionDeclaration;
 use crate::integrations::DiscordConfig;
 use crate::integrations::IntegrationService;
 use crate::tools::ToolResult;
+use crate::types::FunctionDeclaration;
 
 pub struct DiscordIntegration {
     bot_token: String,
@@ -37,10 +37,17 @@ impl DiscordIntegration {
             .map_err(|e| format!("Discord API request failed: {}", e))?;
 
         let status = resp.status();
-        let body = resp.text().await.map_err(|e| format!("Failed to read: {}", e))?;
+        let body = resp
+            .text()
+            .await
+            .map_err(|e| format!("Failed to read: {}", e))?;
 
         if !status.is_success() {
-            return Err(format!("Discord API HTTP {}: {}", status.as_u16(), truncate_str(&body, 400)));
+            return Err(format!(
+                "Discord API HTTP {}: {}",
+                status.as_u16(),
+                truncate_str(&body, 400)
+            ));
         }
 
         serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {}", e))
@@ -59,10 +66,17 @@ impl DiscordIntegration {
             .map_err(|e| format!("Discord API request failed: {}", e))?;
 
         let status = resp.status();
-        let text = resp.text().await.map_err(|e| format!("Failed to read: {}", e))?;
+        let text = resp
+            .text()
+            .await
+            .map_err(|e| format!("Failed to read: {}", e))?;
 
         if !status.is_success() {
-            return Err(format!("Discord API HTTP {}: {}", status.as_u16(), truncate_str(&text, 400)));
+            return Err(format!(
+                "Discord API HTTP {}: {}",
+                status.as_u16(),
+                truncate_str(&text, 400)
+            ));
         }
 
         if text.is_empty() {
@@ -85,9 +99,16 @@ impl DiscordIntegration {
         if status.as_u16() == 204 {
             return Ok(json!({"deleted": true}));
         }
-        let body = resp.text().await.map_err(|e| format!("Failed to read: {}", e))?;
+        let body = resp
+            .text()
+            .await
+            .map_err(|e| format!("Failed to read: {}", e))?;
         if !status.is_success() {
-            return Err(format!("Discord API HTTP {}: {}", status.as_u16(), truncate_str(&body, 400)));
+            return Err(format!(
+                "Discord API HTTP {}: {}",
+                status.as_u16(),
+                truncate_str(&body, 400)
+            ));
         }
         Ok(json!({"deleted": true}))
     }
@@ -225,12 +246,18 @@ impl IntegrationService for DiscordIntegration {
                     return ToolResult::err("Message content exceeds 2000 character limit.");
                 }
 
-                let result = rt.block_on(self.post(&format!("/channels/{}/messages", channel_id), &payload));
+                let result =
+                    rt.block_on(self.post(&format!("/channels/{}/messages", channel_id), &payload));
                 match result {
                     Ok(msg) => {
                         let id = msg["id"].as_str().unwrap_or("?");
                         let channel = msg["channel_id"].as_str().unwrap_or(channel_id);
-                        ToolResult::ok(format!("Message sent: {} (ID: {}, channel: {})", truncate_str(content, 60), id, channel))
+                        ToolResult::ok(format!(
+                            "Message sent: {} (ID: {}, channel: {})",
+                            truncate_str(content, 60),
+                            id,
+                            channel
+                        ))
                     }
                     Err(e) => ToolResult::err(e),
                 }
@@ -240,7 +267,11 @@ impl IntegrationService for DiscordIntegration {
                     Some(c) => c,
                     None => return ToolResult::err("Missing required argument: channel_id"),
                 };
-                let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(20).min(100);
+                let limit = args
+                    .get("limit")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(20)
+                    .min(100);
                 let mut path = format!("/channels/{}/messages?limit={}", channel_id, limit);
                 if let Some(before) = args.get("before").and_then(|v| v.as_str()) {
                     path.push_str(&format!("&before={}", before));
@@ -249,26 +280,41 @@ impl IntegrationService for DiscordIntegration {
                 let result = rt.block_on(self.get(&path));
                 match result {
                     Ok(messages) => {
-                        let _empty: Vec<serde_json::Value> = Vec::new(); let arr = messages.as_array().unwrap_or(&_empty);
+                        let _empty: Vec<serde_json::Value> = Vec::new();
+                        let arr = messages.as_array().unwrap_or(&_empty);
                         if arr.is_empty() {
                             return ToolResult::ok("No messages found.");
                         }
-                        let lines: Vec<String> = arr.iter().map(|m| {
-                            let author = m["author"]["username"].as_str().unwrap_or("?");
-                            let content = m["content"].as_str().unwrap_or("");
-                            let id = m["id"].as_str().unwrap_or("?");
-                            let ts = m["timestamp"].as_str().unwrap_or("?");
-                            let attachments = m["attachments"].as_array()
-                                .map(|a| a.len())
-                                .unwrap_or(0);
-                            let attach_str = if attachments > 0 {
-                                format!(" [{} attachments]", attachments)
-                            } else {
-                                String::new()
-                            };
-                            let edited = if m["edited_timestamp"].is_null() { "" } else { " (edited)" };
-                            format!("[{}] {} {}: {}{}{}", ts, id, author, truncate_str(content, 100), attach_str, edited)
-                        }).collect();
+                        let lines: Vec<String> = arr
+                            .iter()
+                            .map(|m| {
+                                let author = m["author"]["username"].as_str().unwrap_or("?");
+                                let content = m["content"].as_str().unwrap_or("");
+                                let id = m["id"].as_str().unwrap_or("?");
+                                let ts = m["timestamp"].as_str().unwrap_or("?");
+                                let attachments =
+                                    m["attachments"].as_array().map(|a| a.len()).unwrap_or(0);
+                                let attach_str = if attachments > 0 {
+                                    format!(" [{} attachments]", attachments)
+                                } else {
+                                    String::new()
+                                };
+                                let edited = if m["edited_timestamp"].is_null() {
+                                    ""
+                                } else {
+                                    " (edited)"
+                                };
+                                format!(
+                                    "[{}] {} {}: {}{}{}",
+                                    ts,
+                                    id,
+                                    author,
+                                    truncate_str(content, 100),
+                                    attach_str,
+                                    edited
+                                )
+                            })
+                            .collect();
                         ToolResult::ok(lines.join("\n"))
                     }
                     Err(e) => ToolResult::err(e),
@@ -282,25 +328,33 @@ impl IntegrationService for DiscordIntegration {
                 let result = rt.block_on(self.get(&format!("/guilds/{}/channels", guild_id)));
                 match result {
                     Ok(channels) => {
-                        let _empty: Vec<serde_json::Value> = Vec::new(); let arr = channels.as_array().unwrap_or(&_empty);
+                        let _empty: Vec<serde_json::Value> = Vec::new();
+                        let arr = channels.as_array().unwrap_or(&_empty);
                         if arr.is_empty() {
                             return ToolResult::ok("No channels found.");
                         }
-                        let lines: Vec<String> = arr.iter().map(|c| {
-                            let name = c["name"].as_str().unwrap_or("?");
-                            let id = c["id"].as_str().unwrap_or("?");
-                            let ctype = match c["type"].as_u64().unwrap_or(0) {
-                                0 => "text",
-                                2 => "voice",
-                                4 => "category",
-                                5 => "announcement",
-                                15 => "forum",
-                                _ => "other",
-                            };
-                            let topic = c["topic"].as_str().unwrap_or("");
-                            let topic_str = if topic.is_empty() { String::new() } else { format!(" - {}", truncate_str(topic, 40)) };
-                            format!("#{} ({}) [{}{}]", name, id, ctype, topic_str)
-                        }).collect();
+                        let lines: Vec<String> = arr
+                            .iter()
+                            .map(|c| {
+                                let name = c["name"].as_str().unwrap_or("?");
+                                let id = c["id"].as_str().unwrap_or("?");
+                                let ctype = match c["type"].as_u64().unwrap_or(0) {
+                                    0 => "text",
+                                    2 => "voice",
+                                    4 => "category",
+                                    5 => "announcement",
+                                    15 => "forum",
+                                    _ => "other",
+                                };
+                                let topic = c["topic"].as_str().unwrap_or("");
+                                let topic_str = if topic.is_empty() {
+                                    String::new()
+                                } else {
+                                    format!(" - {}", truncate_str(topic, 40))
+                                };
+                                format!("#{} ({}) [{}{}]", name, id, ctype, topic_str)
+                            })
+                            .collect();
                         ToolResult::ok(lines.join("\n"))
                     }
                     Err(e) => ToolResult::err(e),
@@ -310,20 +364,28 @@ impl IntegrationService for DiscordIntegration {
                 let result = rt.block_on(self.get("/users/@me/guilds"));
                 match result {
                     Ok(guilds) => {
-                        let _empty: Vec<serde_json::Value> = Vec::new(); let arr = guilds.as_array().unwrap_or(&_empty);
+                        let _empty: Vec<serde_json::Value> = Vec::new();
+                        let arr = guilds.as_array().unwrap_or(&_empty);
                         if arr.is_empty() {
                             return ToolResult::ok("Bot is not in any guilds.");
                         }
-                        let lines: Vec<String> = arr.iter().map(|g| {
-                            let name = g["name"].as_str().unwrap_or("?");
-                            let id = g["id"].as_str().unwrap_or("?");
-                            let owner = g["owner"].as_bool().unwrap_or(false);
-                            let approx_members = g["approximate_member_count"].as_u64().unwrap_or(0);
-                            format!("{} ({})  members: {}  {}",
-                                name, id, approx_members,
-                                if owner { "[owner]" } else { "" }
-                            )
-                        }).collect();
+                        let lines: Vec<String> = arr
+                            .iter()
+                            .map(|g| {
+                                let name = g["name"].as_str().unwrap_or("?");
+                                let id = g["id"].as_str().unwrap_or("?");
+                                let owner = g["owner"].as_bool().unwrap_or(false);
+                                let approx_members =
+                                    g["approximate_member_count"].as_u64().unwrap_or(0);
+                                format!(
+                                    "{} ({})  members: {}  {}",
+                                    name,
+                                    id,
+                                    approx_members,
+                                    if owner { "[owner]" } else { "" }
+                                )
+                            })
+                            .collect();
                         ToolResult::ok(lines.join("\n"))
                     }
                     Err(e) => ToolResult::err(e),
@@ -345,7 +407,8 @@ impl IntegrationService for DiscordIntegration {
                 if let Some(cat_id) = args.get("category_id").and_then(|v| v.as_str()) {
                     payload["parent_id"] = json!(cat_id);
                 }
-                let result = rt.block_on(self.post(&format!("/guilds/{}/channels", guild_id), &payload));
+                let result =
+                    rt.block_on(self.post(&format!("/guilds/{}/channels", guild_id), &payload));
                 match result {
                     Ok(channel) => {
                         let ch_name = channel["name"].as_str().unwrap_or("?");
@@ -364,9 +427,14 @@ impl IntegrationService for DiscordIntegration {
                     Some(m) => m,
                     None => return ToolResult::err("Missing required argument: message_id"),
                 };
-                let result = rt.block_on(self.delete(&format!("/channels/{}/messages/{}", channel_id, message_id)));
+                let result = rt.block_on(
+                    self.delete(&format!("/channels/{}/messages/{}", channel_id, message_id)),
+                );
                 match result {
-                    Ok(_) => ToolResult::ok(format!("Deleted message {} from channel {}", message_id, channel_id)),
+                    Ok(_) => ToolResult::ok(format!(
+                        "Deleted message {} from channel {}",
+                        message_id, channel_id
+                    )),
                     Err(e) => ToolResult::err(e),
                 }
             }
@@ -381,15 +449,23 @@ impl IntegrationService for DiscordIntegration {
                         let name = channel["name"].as_str().unwrap_or("?");
                         let id = channel["id"].as_str().unwrap_or("?");
                         let ctype = match channel["type"].as_u64().unwrap_or(0) {
-                            0 => "text", 2 => "voice", 4 => "category",
-                            5 => "announcement", 15 => "forum", _ => "other",
+                            0 => "text",
+                            2 => "voice",
+                            4 => "category",
+                            5 => "announcement",
+                            15 => "forum",
+                            _ => "other",
                         };
                         let topic = channel["topic"].as_str().unwrap_or("");
                         let position = channel["position"].as_u64().unwrap_or(0);
                         let nsfw = channel["nsfw"].as_bool().unwrap_or(false);
                         ToolResult::ok(format!(
                             "#{}\n  ID: {}\n  Type: {}\n  Position: {}\n  NSFW: {}\n  Topic: {}",
-                            name, id, ctype, position, nsfw,
+                            name,
+                            id,
+                            ctype,
+                            position,
+                            nsfw,
                             if topic.is_empty() { "(none)" } else { topic }
                         ))
                     }

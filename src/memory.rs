@@ -1,7 +1,7 @@
-use std::path::PathBuf;
-use std::fs;
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
 use chrono::Local;
+use std::fs;
+use std::path::PathBuf;
 
 /// DIPRALIX Memory Core
 /// Manages persistent project-level and global-level memory using Markdown files.
@@ -18,13 +18,14 @@ impl MemoryCore {
 
     /// Ensure memory directories exist.
     pub fn init(&self) -> Result<()> {
-        fs::create_dir_all(&self.project_dir).context("Failed to create project memory directory")?;
-        
+        fs::create_dir_all(&self.project_dir)
+            .context("Failed to create project memory directory")?;
+
         let global_dir = dirs::home_dir()
             .map(|h| h.join(".dipralix/patterns"))
             .context("Failed to resolve home directory")?;
         fs::create_dir_all(global_dir).context("Failed to create global patterns directory")?;
-        
+
         Ok(())
     }
 
@@ -34,10 +35,11 @@ impl MemoryCore {
         let path = self.project_dir.join("decisions.md");
         let now = Local::now().format("%Y-%m-%d %H:%M:%S");
         let entry = format!("- [{}] {}\n", now, decision);
-        
-        let mut content = fs::read_to_string(&path).unwrap_or_else(|_| "# Project Decisions\n\n".to_string());
+
+        let mut content =
+            fs::read_to_string(&path).unwrap_or_else(|_| "# Project Decisions\n\n".to_string());
         content.push_str(&entry);
-        
+
         fs::write(path, content).context("Failed to write decision to memory")
     }
 
@@ -47,8 +49,11 @@ impl MemoryCore {
             .map(|h| h.join(".dipralix/patterns"))
             .context("Failed to resolve home directory")?;
         fs::create_dir_all(&global_dir)?;
-        
-        let path = global_dir.join(format!("{}.md", pattern_name.replace(' ', "_").to_lowercase()));
+
+        let path = global_dir.join(format!(
+            "{}.md",
+            pattern_name.replace(' ', "_").to_lowercase()
+        ));
         fs::write(path, content).context("Failed to write pattern to global memory")
     }
 
@@ -68,18 +73,20 @@ impl MemoryCore {
         let global_dir = dirs::home_dir()
             .map(|h| h.join(".dipralix/patterns"))
             .unwrap_or_default();
-        
+
         let mut patterns = String::new();
         if let Ok(entries) = fs::read_dir(global_dir) {
             for entry in entries.flatten() {
                 if let Ok(content) = fs::read_to_string(entry.path()) {
-                    patterns.push_str(&format!("\n### {}\n\n{}", 
+                    patterns.push_str(&format!(
+                        "\n### {}\n\n{}",
                         entry.file_name().to_string_lossy(),
-                        content));
+                        content
+                    ));
                 }
             }
         }
-        
+
         if patterns.is_empty() {
             String::new()
         } else {

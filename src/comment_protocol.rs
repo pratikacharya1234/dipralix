@@ -14,7 +14,10 @@ impl CommentProtocol {
     pub fn scan_workspace() -> Result<Vec<CommentTask>> {
         let mut tasks = Vec::new();
 
-        println!("  {} Scanning workspace for 'DIPRALIX:' tasks...", "→".dimmed());
+        println!(
+            "  {} Scanning workspace for 'DIPRALIX:' tasks...",
+            "→".dimmed()
+        );
 
         for entry in WalkDir::new(".").into_iter().filter_map(|e| e.ok()) {
             let path = entry.path();
@@ -27,7 +30,10 @@ impl CommentProtocol {
             if path.is_file() {
                 if let Some(ext) = path.extension() {
                     let ext_str = ext.to_string_lossy();
-                    if matches!(ext_str.as_ref(), "rs" | "js" | "ts" | "py" | "go" | "yaml" | "yml" | "md" | "toml") {
+                    if matches!(
+                        ext_str.as_ref(),
+                        "rs" | "js" | "ts" | "py" | "go" | "yaml" | "yml" | "md" | "toml"
+                    ) {
                         if let Ok(content) = std::fs::read_to_string(path) {
                             for (i, line) in content.lines().enumerate() {
                                 // Skip DIPRALIX-DONE markers
@@ -35,7 +41,8 @@ impl CommentProtocol {
                                     continue;
                                 }
                                 if let Some(idx) = line.find("DIPRALIX:") {
-                                    let description = line[idx + "DIPRALIX:".len()..].trim().to_string();
+                                    let description =
+                                        line[idx + "DIPRALIX:".len()..].trim().to_string();
                                     tasks.push(CommentTask {
                                         file: s.to_string(),
                                         line_num: i + 1,
@@ -60,7 +67,8 @@ impl CommentProtocol {
 
         println!("\n  {} Pending Tasks:", "[TASKS]".cyan());
         for (i, task) in tasks.iter().enumerate() {
-            println!("  {}. {} {}: {}",
+            println!(
+                "  {}. {} {}: {}",
                 (i + 1).to_string().yellow(),
                 task.file.dimmed(),
                 format!("line {}", task.line_num).dimmed(),

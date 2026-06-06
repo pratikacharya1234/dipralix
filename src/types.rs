@@ -39,7 +39,11 @@ pub enum Part {
         #[serde(rename = "functionCall")]
         function_call: FunctionCall,
         /// Gemini 3+ thought signature on the part itself (sibling of functionCall).
-        #[serde(default, rename = "thoughtSignature", skip_serializing_if = "Option::is_none")]
+        #[serde(
+            default,
+            rename = "thoughtSignature",
+            skip_serializing_if = "Option::is_none"
+        )]
         thought_signature: Option<String>,
     },
     FunctionResponse {
@@ -56,14 +60,22 @@ pub enum Part {
         #[serde(default)]
         thought: Option<bool>,
         /// Gemini 3+ thought signature on the part itself.
-        #[serde(default, rename = "thoughtSignature", skip_serializing_if = "Option::is_none")]
+        #[serde(
+            default,
+            rename = "thoughtSignature",
+            skip_serializing_if = "Option::is_none"
+        )]
         thought_signature: Option<String>,
     },
 }
 
 impl Part {
     pub fn text(s: impl Into<String>) -> Self {
-        Part::Text { text: s.into(), thought: None, thought_signature: None }
+        Part::Text {
+            text: s.into(),
+            thought: None,
+            thought_signature: None,
+        }
     }
 
     pub fn image(mime_type: impl Into<String>, base64_data: impl Into<String>) -> Self {
@@ -89,7 +101,11 @@ pub struct FunctionCall {
     pub args: serde_json::Value,
     /// Gemini 3 requires thought_signature on function call parts for tool use.
     /// Captured from model response and echoed back in conversation history.
-    #[serde(default, rename = "thought_signature", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "thought_signature",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub thought_signature: Option<String>,
 }
 
@@ -185,7 +201,6 @@ pub struct ApiError {
 // ── HTTP client ────────────────────────────────────────────────────────────────
 
 #[allow(dead_code)]
-#[allow(dead_code)]
 pub struct GeminiClient {
     http: reqwest::Client,
     config: Config,
@@ -194,7 +209,10 @@ pub struct GeminiClient {
 #[allow(dead_code)]
 impl GeminiClient {
     pub fn new(config: Config) -> Self {
-        Self { http: reqwest::Client::new(), config }
+        Self {
+            http: reqwest::Client::new(),
+            config,
+        }
     }
 
     /// Non-streaming — used for /compact and SecuritySweep.
@@ -207,11 +225,16 @@ impl GeminiClient {
             self.config.model, self.config.api_key
         );
 
-        let resp = self.http.post(&url).json(&request).send().await
+        let resp = self
+            .http
+            .post(&url)
+            .json(&request)
+            .send()
+            .await
             .context("Network request to Gemini API failed")?;
 
         let status = resp.status();
-        let body   = resp.text().await.context("Failed to read response body")?;
+        let body = resp.text().await.context("Failed to read response body")?;
 
         let parsed: GenerateContentResponse = serde_json::from_str(&body).with_context(|| {
             format!(
@@ -229,7 +252,11 @@ impl GeminiClient {
             );
         }
         if !status.is_success() {
-            anyhow::bail!("Gemini API HTTP {}: {}", status, &body[..body.len().min(400)]);
+            anyhow::bail!(
+                "Gemini API HTTP {}: {}",
+                status,
+                &body[..body.len().min(400)]
+            );
         }
         Ok(parsed)
     }
@@ -244,7 +271,7 @@ impl GeminiClient {
     pub async fn generate_streaming(
         &self,
         request: &GenerateContentRequest,
-        on_text:    &mut impl FnMut(&str),
+        on_text: &mut impl FnMut(&str),
         on_thought: &mut impl FnMut(&str),
     ) -> Result<GenerateContentResponse> {
         let url = format!(
@@ -252,24 +279,33 @@ impl GeminiClient {
             self.config.model, self.config.api_key
         );
 
-        let resp = self.http.post(&url).json(request).send().await
+        let resp = self
+            .http
+            .post(&url)
+            .json(request)
+            .send()
+            .await
             .context("Streaming request to Gemini API failed")?;
 
         let status = resp.status();
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
-            anyhow::bail!("Gemini API HTTP {}: {}", status, &body[..body.len().min(400)]);
+            anyhow::bail!(
+                "Gemini API HTTP {}: {}",
+                status,
+                &body[..body.len().min(400)]
+            );
         }
 
-        let mut stream   = resp.bytes_stream();
+        let mut stream = resp.bytes_stream();
         let mut line_buf = String::new();
 
-        let mut all_text    = String::new();
+        let mut all_text = String::new();
         let mut all_thought = String::new();
         let mut extra_parts: Vec<Part> = Vec::new();
-        let mut usage:        Option<UsageMetadata> = None;
-        let mut finish_reason: Option<String>       = None;
-        let mut api_error:     Option<ApiError>     = None;
+        let mut usage: Option<UsageMetadata> = None;
+        let mut finish_reason: Option<String> = None;
+        let mut api_error: Option<ApiError> = None;
 
         while let Some(chunk) = stream.next().await {
             let bytes = chunk.context("Error reading streaming response")?;
@@ -282,17 +318,23 @@ impl GeminiClient {
                         let line = line_buf[..pos].trim_end_matches('\r').to_string();
                         line_buf = line_buf[pos + 1..].to_string();
 
-                        if !line.starts_with("data: ") { continue; }
+                        if !line.starts_with("data: ") {
+                            continue;
+                        }
                         let json_str = &line[6..];
-                        if json_str == "[DONE]"        { continue; }
+                        if json_str == "[DONE]" {
+                            continue;
+                        }
 
                         let chunk_resp: GenerateContentResponse =
                             match serde_json::from_str(json_str) {
-                                Ok(r)  => r,
+                                Ok(r) => r,
                                 Err(_) => continue,
                             };
 
-                        if let Some(err) = chunk_resp.error { api_error = Some(err); }
+                        if let Some(err) = chunk_resp.error {
+                            api_error = Some(err);
+                        }
 
                         if let Some(candidates) = chunk_resp.candidates {
                             for candidate in candidates {
@@ -302,7 +344,11 @@ impl GeminiClient {
                                 if let Some(content) = candidate.content {
                                     for part in content.parts {
                                         match part {
-                                            Part::Text { ref text, thought: Some(true), .. } => {
+                                            Part::Text {
+                                                ref text,
+                                                thought: Some(true),
+                                                ..
+                                            } => {
                                                 on_thought(text);
                                                 all_thought.push_str(text);
                                             }
@@ -334,13 +380,15 @@ impl GeminiClient {
         }
 
         let mut final_parts: Vec<Part> = Vec::new();
-        if !all_text.is_empty()    { final_parts.push(Part::text(all_text)); }
+        if !all_text.is_empty() {
+            final_parts.push(Part::text(all_text));
+        }
         final_parts.extend(extra_parts);
 
         Ok(GenerateContentResponse {
             candidates: Some(vec![Candidate {
                 content: Some(Content {
-                    role:  "model".to_string(),
+                    role: "model".to_string(),
                     parts: final_parts,
                 }),
                 finish_reason,

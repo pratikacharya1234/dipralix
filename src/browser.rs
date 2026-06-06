@@ -20,11 +20,16 @@ fn cache_path(url: &str) -> PathBuf {
 
 fn url_to_key(url: &str) -> String {
     // Cheap stable key — strip scheme, replace unsafe chars.
-    let stripped = url.trim_start_matches("https://").trim_start_matches("http://");
-    let mut s: String = stripped.chars()
+    let stripped = url
+        .trim_start_matches("https://")
+        .trim_start_matches("http://");
+    let mut s: String = stripped
+        .chars()
         .map(|c| if c.is_alphanumeric() { c } else { '_' })
         .collect();
-    if s.len() > 120 { s.truncate(120); }
+    if s.len() > 120 {
+        s.truncate(120);
+    }
     s
 }
 
@@ -40,7 +45,10 @@ pub async fn fetch_markdown(url: &str) -> Result<String> {
         .build()
         .context("failed to build http client")?;
 
-    let resp = client.get(url).send().await
+    let resp = client
+        .get(url)
+        .send()
+        .await
         .with_context(|| format!("GET {}", url))?;
     let status = resp.status();
     let body = resp.text().await.context("read response body")?;
@@ -58,7 +66,9 @@ pub async fn fetch_markdown(url: &str) -> Result<String> {
 pub fn clear_cache() -> Result<usize> {
     let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
     let cache_dir = home.join(".dipralix").join("cache").join("web");
-    if !cache_dir.exists() { return Ok(0); }
+    if !cache_dir.exists() {
+        return Ok(0);
+    }
     let mut n = 0;
     for entry in fs::read_dir(&cache_dir)? {
         let entry = entry?;
@@ -84,7 +94,10 @@ pub fn html_to_markdown(html: &str) -> String {
     let mut tag_buf = String::new();
     for ch in body.chars() {
         match ch {
-            '<' => { in_tag = true; tag_buf.clear(); }
+            '<' => {
+                in_tag = true;
+                tag_buf.clear();
+            }
             '>' => {
                 in_tag = false;
                 emit_tag_marker(&tag_buf, &mut out);
@@ -109,8 +122,12 @@ fn strip_blocks(html: &str, tags: &[&str]) -> String {
         let close = format!("</{}>", tag);
         loop {
             let lower = out.to_lowercase();
-            let Some(start) = lower.find(&open) else { break };
-            let Some(end_rel) = lower[start..].find(&close) else { break };
+            let Some(start) = lower.find(&open) else {
+                break;
+            };
+            let Some(end_rel) = lower[start..].find(&close) else {
+                break;
+            };
             let end = start + end_rel + close.len();
             out.replace_range(start..end, "");
         }
@@ -123,7 +140,11 @@ fn extract_focus(lower: &str, original: &str) -> Option<String> {
         if let Some(start) = lower.find(tag) {
             // Find the end of the opening tag
             let start_close = lower[start..].find('>')? + start + 1;
-            let close_tag = if tag == &"<main" { "</main>" } else { "</article>" };
+            let close_tag = if tag == &"<main" {
+                "</main>"
+            } else {
+                "</article>"
+            };
             let end_rel = lower[start_close..].find(close_tag)?;
             return Some(original[start_close..start_close + end_rel].to_string());
         }
@@ -155,10 +176,16 @@ fn collapse_ws(s: &str) -> String {
     let mut last_space = false;
     for ch in s.chars() {
         if ch == '\n' {
-            if last_nl < 2 { out.push('\n'); last_nl += 1; }
+            if last_nl < 2 {
+                out.push('\n');
+                last_nl += 1;
+            }
             last_space = false;
         } else if ch.is_whitespace() {
-            if !last_space { out.push(' '); last_space = true; }
+            if !last_space {
+                out.push(' ');
+                last_space = true;
+            }
             last_nl = 0;
         } else {
             out.push(ch);

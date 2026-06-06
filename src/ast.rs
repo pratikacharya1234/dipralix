@@ -1,4 +1,4 @@
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
 use tree_sitter::Parser;
 
 pub struct Symbol {
@@ -13,7 +13,9 @@ pub fn extract_symbols(content: &str) -> Result<Vec<Symbol>> {
     let language = tree_sitter_rust::language();
     parser.set_language(language)?;
 
-    let tree = parser.parse(content, None).context("Failed to parse code")?;
+    let tree = parser
+        .parse(content, None)
+        .context("Failed to parse code")?;
     let root_node = tree.root_node();
 
     let mut symbols = Vec::new();

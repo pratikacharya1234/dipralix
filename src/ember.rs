@@ -19,7 +19,8 @@ pub async fn ember_loop(config: &crate::config::Config) -> Result<()> {
     }
 
     // Greet — nullvoid style, no emoji
-    let proj = std::env::current_dir().ok()
+    let proj = std::env::current_dir()
+        .ok()
         .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
         .unwrap_or_default();
     let greeting = format!("EMBER online. Working on {}. What do you need?", proj);
@@ -31,23 +32,38 @@ pub async fn ember_loop(config: &crate::config::Config) -> Result<()> {
     println!();
 
     // Memory
-    let mem_path = dirs::home_dir().unwrap_or_default().join(".forge").join("ember-memory.md");
+    let mem_path = dirs::home_dir()
+        .unwrap_or_default()
+        .join(".forge")
+        .join("ember-memory.md");
     let mut memory: Vec<String> = if mem_path.exists() {
-        std::fs::read_to_string(&mem_path).unwrap_or_default()
-            .lines().map(|l| l.to_string()).filter(|l| !l.trim().is_empty()).collect()
-    } else { Vec::new() };
+        std::fs::read_to_string(&mem_path)
+            .unwrap_or_default()
+            .lines()
+            .map(|l| l.to_string())
+            .filter(|l| !l.trim().is_empty())
+            .collect()
+    } else {
+        Vec::new()
+    };
 
     loop {
         let user_msg = match crate::voice::listen_and_transcribe(&config.api_key, 3).await {
             Ok(t) => t,
             Err(_) => continue,
         };
-        if user_msg.is_empty() { continue; }
+        if user_msg.is_empty() {
+            continue;
+        }
 
-        println!(" {}{} {}{} {}",
-            crate::ui::nullvoid::PLASMA, crate::ui::nullvoid::I_PROMPT,
-            crate::ui::nullvoid::BRIGHT, user_msg,
-            crate::ui::nullvoid::RESET);
+        println!(
+            " {}{} {}{} {}",
+            crate::ui::nullvoid::PLASMA,
+            crate::ui::nullvoid::I_PROMPT,
+            crate::ui::nullvoid::BRIGHT,
+            user_msg,
+            crate::ui::nullvoid::RESET
+        );
 
         let lower = user_msg.to_lowercase();
         if lower.contains("quit") || lower.contains("exit") || lower.contains("goodbye") {
@@ -60,7 +76,16 @@ pub async fn ember_loop(config: &crate::config::Config) -> Result<()> {
 
         memory.push(format!("You: {}", user_msg));
         let ctx = if memory.len() > 2 {
-            let r: String = memory.iter().rev().take(4).collect::<Vec<_>>().iter().rev().map(|s| s.as_str()).collect::<Vec<_>>().join("\n");
+            let r: String = memory
+                .iter()
+                .rev()
+                .take(4)
+                .collect::<Vec<_>>()
+                .iter()
+                .rev()
+                .map(|s| s.as_str())
+                .collect::<Vec<_>>()
+                .join("\n");
             format!("You are EMBER, concise voice AI for FORGE. 1-2 sentences max. Recent:\n{}\n\nUser: {}", r, user_msg)
         } else {
             format!("You are EMBER. Concise. 1-2 sentences.\nUser: {}", user_msg)
@@ -81,16 +106,21 @@ pub async fn ember_loop(config: &crate::config::Config) -> Result<()> {
 /// Speak via Google Cloud TTS (same API key as Gemini). Lightweight, always works.
 async fn speak(text: &str, api_key: &str) {
     let clean: String = text.chars().filter(|c| c.is_ascii()).collect();
-    if clean.len() < 2 { return; }
-    
+    if clean.len() < 2 {
+        return;
+    }
+
     let body = serde_json::json!({
         "input": { "text": clean },
         "voice": { "languageCode": "en-US", "name": "en-US-Journey-O" },
         "audioConfig": { "audioEncoding": "LINEAR16", "speakingRate": 1.1 }
     });
 
-    let url = format!("https://texttospeech.googleapis.com/v1/text:synthesize?key={}", api_key);
-    
+    let url = format!(
+        "https://texttospeech.googleapis.com/v1/text:synthesize?key={}",
+        api_key
+    );
+
     if let Ok(resp) = reqwest::Client::new()
         .post(&url)
         .json(&body)
@@ -116,9 +146,13 @@ async fn speak(text: &str, api_key: &str) {
 }
 
 fn save_mem(path: &std::path::Path, memory: &[String]) {
-    if let Some(p) = path.parent() { let _ = std::fs::create_dir_all(p); }
+    if let Some(p) = path.parent() {
+        let _ = std::fs::create_dir_all(p);
+    }
     let _ = std::fs::write(path, memory.join("\n"));
 }
 
 /// Check if mic is available for EMBER.
-pub fn mic_available() -> bool { crate::voice::check_audio() }
+pub fn mic_available() -> bool {
+    crate::voice::check_audio()
+}

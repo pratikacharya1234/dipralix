@@ -1,0 +1,14 @@
+# Configuration for `cargo audit` — separate from `deny.toml` because
+# the two tools share the same RUSTSEC IDs but have different
+# config-file formats.
+#
+# Keep this list in sync with `[advisories] ignore` in `deny.toml`.
+
+[advisories]
+ignore = [
+    "RUSTSEC-2024-0370", # proc-macro-error unmaintained (transitive)
+    "RUSTSEC-2024-0375", # atty unmaintained
+    "RUSTSEC-2025-0134", # rustls-pemfile unmaintained
+    "RUSTSEC-2021-0145", # atty unsound (defunct, but kept for safety)
+    "RUSTSEC-2023-0071", # rsa Marvin Attack — no fixed upgrade
+]

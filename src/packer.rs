@@ -17,10 +17,16 @@ pub fn pack_project(output: Option<&str>) -> Result<String> {
         .unwrap_or_else(|| "unknown".to_string());
 
     buf.push_str(&format!("# Project Context: {}\n", project_name));
-    buf.push_str(&format!("Generated: {}\n\n", chrono::Local::now().format("%Y-%m-%d %H:%M")));
+    buf.push_str(&format!(
+        "Generated: {}\n\n",
+        chrono::Local::now().format("%Y-%m-%d %H:%M")
+    ));
 
     // Git info
-    if let Ok(output) = Command::new("git").args(["log", "--oneline", "-10"]).output() {
+    if let Ok(output) = Command::new("git")
+        .args(["log", "--oneline", "-10"])
+        .output()
+    {
         let log = String::from_utf8_lossy(&output.stdout);
         if !log.trim().is_empty() {
             buf.push_str("## Recent Git History\n```\n");
@@ -29,7 +35,10 @@ pub fn pack_project(output: Option<&str>) -> Result<String> {
         }
     }
 
-    if let Ok(output) = Command::new("git").args(["remote", "get-url", "origin"]).output() {
+    if let Ok(output) = Command::new("git")
+        .args(["remote", "get-url", "origin"])
+        .output()
+    {
         let url = String::from_utf8_lossy(&output.stdout).trim().to_string();
         if !url.is_empty() {
             buf.push_str(&format!("**Remote:** {}\n\n", url));
@@ -43,10 +52,22 @@ pub fn pack_project(output: Option<&str>) -> Result<String> {
 
     // Key files
     let key_files = [
-        "README.md", "package.json", "Cargo.toml", "pyproject.toml",
-        "Makefile", "Dockerfile", ".gitignore", "docker-compose.yml",
-        "tsconfig.json", "go.mod", "Gemfile", "requirements.txt",
-        "src/main.rs", "src/main.go", "src/index.ts", "src/app.py",
+        "README.md",
+        "package.json",
+        "Cargo.toml",
+        "pyproject.toml",
+        "Makefile",
+        "Dockerfile",
+        ".gitignore",
+        "docker-compose.yml",
+        "tsconfig.json",
+        "go.mod",
+        "Gemfile",
+        "requirements.txt",
+        "src/main.rs",
+        "src/main.go",
+        "src/index.ts",
+        "src/app.py",
     ];
 
     buf.push_str("## Key Files\n\n");
@@ -55,7 +76,11 @@ pub fn pack_project(output: Option<&str>) -> Result<String> {
             if let Ok(content) = fs::read_to_string(file) {
                 let truncated = if content.lines().count() > 100 {
                     let short: String = content.lines().take(100).collect::<Vec<_>>().join("\n");
-                    format!("{}\n... (truncated, {} total lines)", short, content.lines().count())
+                    format!(
+                        "{}\n... (truncated, {} total lines)",
+                        short,
+                        content.lines().count()
+                    )
                 } else {
                     content
                 };
@@ -81,12 +106,27 @@ pub fn pack_project(output: Option<&str>) -> Result<String> {
 
     fs::write(out_path, &buf)?;
     let size = fs::metadata(out_path)?.len();
-    Ok(format!("Packed project context → {} ({:.1}KB)", out_path, size as f64 / 1024.0))
+    Ok(format!(
+        "Packed project context → {} ({:.1}KB)",
+        out_path,
+        size as f64 / 1024.0
+    ))
 }
 
 fn pack_tree(dir: &str, buf: &mut String, depth: usize, max_depth: usize) -> Result<()> {
-    if depth > max_depth { return Ok(()); }
-    let skip_dirs = ["target", "node_modules", ".git", "dist", "__pycache__", ".venv", "venv", "build"];
+    if depth > max_depth {
+        return Ok(());
+    }
+    let skip_dirs = [
+        "target",
+        "node_modules",
+        ".git",
+        "dist",
+        "__pycache__",
+        ".venv",
+        "venv",
+        "build",
+    ];
 
     let mut entries: Vec<_> = fs::read_dir(dir)?
         .filter_map(|e| e.ok())
@@ -116,6 +156,10 @@ fn truncate_json(content: &str, max_lines: usize) -> String {
     if lines.len() <= max_lines {
         content.to_string()
     } else {
-        format!("{}\n... ({} total lines)", lines[..max_lines].join("\n"), lines.len())
+        format!(
+            "{}\n... ({} total lines)",
+            lines[..max_lines].join("\n"),
+            lines.len()
+        )
     }
 }
