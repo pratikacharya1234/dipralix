@@ -99,6 +99,7 @@ pub async fn execute_tool(name: &str, args: &Value, ctx: &ToolContext) -> ToolRe
         "git_snapshot" => tool_git_snapshot(args).await,
         "memorize_decision" => tool_memorize_decision(args).await,
         "memorize_pattern" => tool_memorize_pattern(args).await,
+        "record_outcome" => tool_record_outcome(args),
         other => ToolResult::err(format!("Unknown tool: {other}")),
     }
 }
@@ -878,6 +879,111 @@ async fn tool_memorize_pattern(args: &Value) -> ToolResult {
     }
 }
 
+// ── record_outcome ───────────────────────────────────────────────────────────
+
+fn tool_record_outcome(args: &Value) -> ToolResult {
+    use crate::ledger::{Confidence, Ledger, Outcome, ProofOfWork};
+
+    let task = match args.get("task").and_then(Value::as_str) {
+        Some(t) if !t.trim().is_empty() => t,
+        _ => return ToolResult::err("Missing 'task' argument"),
+    };
+    let outcome = match args
+        .get("outcome")
+        .and_then(Value::as_str)
+        .and_then(Outcome::parse)
+    {
+        Some(o) => o,
+        None => {
+            return ToolResult::err(
+                "'outcome' must be one of: verified, failed, rejected, superseded",
+            )
+        }
+    };
+    let confidence = Confidence::parse(
+        args.get("confidence")
+            .and_then(Value::as_str)
+            .unwrap_or("medium"),
+    );
+    let kind = args
+        .get("kind")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
+    let note = args
+        .get("note")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
+    let supersedes = args
+        .get("supersedes")
+        .and_then(Value::as_str)
+        .filter(|s| !s.trim().is_empty())
+        .map(|s| s.to_string());
+    let files = args
+        .get("files")
+        .and_then(Value::as_array)
+        .map(|a| {
+            a.iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let proof = args
+        .get("command")
+        .and_then(Value::as_str)
+        .map(|cmd| ProofOfWork {
+            command: cmd.to_string(),
+            exit_code: args.get("exit_code").and_then(Value::as_i64).unwrap_or(0) as i32,
+            tests_passed: args
+                .get("tests_passed")
+                .and_then(Value::as_u64)
+                .map(|n| n as u32),
+            tests_added: args
+                .get("tests_added")
+                .and_then(Value::as_u64)
+                .map(|n| n as u32),
+        });
+
+    // A "verified" claim must carry passing machine proof — this is the contract
+    // that makes the ledger trustworthy.
+    if outcome == Outcome::Verified {
+        match &proof {
+            Some(p) if p.succeeded() => {}
+            Some(_) => {
+                return ToolResult::err(
+                    "Cannot record 'verified': the proof command did not exit 0. \
+                     Record 'failed' or fix the issue first.",
+                )
+            }
+            None => {
+                return ToolResult::err(
+                    "Cannot record 'verified' without proof. \
+                     Pass the verification 'command' and its 'exit_code'.",
+                )
+            }
+        }
+    }
+
+    match Ledger::open().record(
+        task, kind, files, outcome, confidence, proof, supersedes, note,
+    ) {
+        Ok(entry) => {
+            let receipt = entry
+                .proof
+                .as_ref()
+                .map(|p| p.render())
+                .unwrap_or_else(|| "no proof attached".to_string());
+            ToolResult::ok(format!(
+                "Recorded outcome [{:?}] id={} — {}",
+                outcome, entry.id, receipt
+            ))
+        }
+        Err(e) => ToolResult::err(format!("Failed to record outcome: {e}")),
+    }
+}
+
 // ── Gemini function declarations ───────────────────────────────────────────────
 
 pub fn core_tool_count() -> usize {
@@ -1084,6 +1190,27 @@ pub fn get_tool_declarations() -> Vec<FunctionDeclaration> {
                     "content": { "type": "STRING", "description": "The pattern description in Markdown" }
                 },
                 "required": ["name", "content"]
+            }),
+        },
+        FunctionDeclaration {
+            name: "record_outcome".to_string(),
+            description: "Record a verified task outcome to the per-repo Verified Outcome Ledger so future sessions inherit it. Call this when you finish a task. An outcome of 'verified' REQUIRES machine proof: pass the verification 'command' and its 'exit_code' (must be 0). Use 'failed' for attempts that did not pass, 'rejected' when the user declined the change, and 'superseded' (with 'supersedes') when a past fact no longer holds.".to_string(),
+            parameters: json!({
+                "type": "OBJECT",
+                "properties": {
+                    "task":         { "type": "STRING",  "description": "One-line description of the task" },
+                    "outcome":      { "type": "STRING",  "description": "verified | failed | rejected | superseded" },
+                    "confidence":   { "type": "STRING",  "description": "high | medium | low (default medium)" },
+                    "kind":         { "type": "STRING",  "description": "Task class, e.g. code-change, analysis, discovery" },
+                    "files":        { "type": "ARRAY",   "items": { "type": "STRING" }, "description": "Files the change touched" },
+                    "command":      { "type": "STRING",  "description": "Verification command that was run (e.g. 'cargo test')" },
+                    "exit_code":    { "type": "INTEGER", "description": "Exit code of the verification command (0 = success)" },
+                    "tests_passed": { "type": "INTEGER", "description": "Number of tests observed passing, if reported" },
+                    "tests_added":  { "type": "INTEGER", "description": "Number of new tests added by the change" },
+                    "supersedes":   { "type": "STRING",  "description": "Id of an earlier ledger entry this overturns" },
+                    "note":         { "type": "STRING",  "description": "Failure reason, caveat, or rationale" }
+                },
+                "required": ["task", "outcome"]
             }),
         },
     ]

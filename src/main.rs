@@ -23,6 +23,7 @@ mod fingerprint;
 mod infra;
 mod integrations;
 mod learning;
+mod ledger;
 mod living_docs;
 mod mcp;
 mod memory;

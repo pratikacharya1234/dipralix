@@ -395,9 +395,10 @@ mod integration_count_tests {
         // 15 file/exec tools (read, write, append, edit, bash, list_files, list_symbols,
         // search, glob, mkdir, delete, move, copy, url_fetch, git_snapshot)
         // + 2 memory tools (memorize_decision, memorize_pattern)
+        // + 1 ledger tool (record_outcome)
         assert_eq!(
-            count, 17,
-            "Expected 17 core tools — update this test when adding/removing tools in tools.rs"
+            count, 18,
+            "Expected 18 core tools — update this test when adding/removing tools in tools.rs"
         );
     }
 
