@@ -1,6 +1,6 @@
 [package]
 name = "dipralix"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Multi-model terminal AI coding agent — dipralix code with any model"
 authors = ["pratikacharya1234"]
