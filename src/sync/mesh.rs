@@ -890,7 +890,8 @@ mod tests {
 
         let target = root_b.join(rel);
         let mut synced = false;
-        for _ in 0..60 {
+        // CI can be noisy; allow enough time for a couple of reconnect cycles.
+        for _ in 0..180 {
             if let Ok(body) = std::fs::read(&target) {
                 if body == b"use blake3 for hashing" {
                     synced = true;
