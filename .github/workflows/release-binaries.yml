@@ -26,7 +26,11 @@ jobs:
             archive: tar.gz
             bin: dipralix-cli
             asset_suffix: linux-x86_64
-          - os: macos-13
+          # Cross-compile the Intel-mac binary on the arm64 runner. GitHub's
+          # Intel `macos-13` runners are being retired and were stalling in the
+          # queue, so the macos-x86_64 asset never built. The Apple toolchain on
+          # macos-latest targets x86_64 natively.
+          - os: macos-latest
             target: x86_64-apple-darwin
             archive: tar.gz
             bin: dipralix-cli
