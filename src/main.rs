@@ -161,6 +161,25 @@ struct Args {
     /// (realtime) Project root; the watcher scopes to `<root>/.dipralix/`.
     #[clap(long, requires = "sync")]
     project_root: Option<String>,
+
+    /// (realtime) Serverless P2P mesh: discover peers over mDNS on the LAN and
+    /// sync over Noise-encrypted TCP. No `--server`/`--token` needed.
+    #[clap(long, requires = "sync")]
+    mesh: bool,
+
+    /// (realtime, mesh) TCP port to bind for peer links (0 picks an ephemeral port).
+    #[clap(long, requires = "mesh", default_value_t = 0)]
+    mesh_port: u16,
+
+    /// (realtime, mesh) Shared room secret; stretched into the Noise key. Every
+    /// peer that knows this secret (and is on the LAN) can join the room.
+    #[clap(long, requires = "mesh")]
+    secret: Option<String>,
+
+    /// (realtime, mesh) Manually add a peer `host:port` to dial, in addition to
+    /// mDNS discovery. Repeatable; useful when multicast is firewalled.
+    #[clap(long = "peer", requires = "mesh")]
+    peers: Vec<String>,
 }
 
 #[tokio::main]
@@ -322,19 +341,12 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-/// Dispatch the realtime sync subcommand. Requires `--sync` plus
-/// `--server` and `--token`; falls back to `args.room = "default"` if
-/// not specified.
+/// Dispatch the realtime sync subcommand. Two modes:
+/// - **mesh** (`--mesh`): serverless P2P over mDNS + encrypted TCP.
+/// - **server** (default): WebSocket client against a `dipralix-server`,
+///   requiring `--server` and `--token`.
 async fn run_realtime(args: &Args) -> Result<()> {
     init_sync_tracing();
-    let server = args
-        .server
-        .clone()
-        .ok_or_else(|| anyhow::anyhow!("--sync requires --server <ws-url>"))?;
-    let token = args
-        .token
-        .clone()
-        .ok_or_else(|| anyhow::anyhow!("--sync requires --token <jwt>"))?;
     let room = args.room.clone().unwrap_or_else(|| "default".to_string());
     let user = args
         .user
@@ -342,6 +354,25 @@ async fn run_realtime(args: &Args) -> Result<()> {
         .unwrap_or_else(|| std::env::var("USER").unwrap_or_else(|_| "anon".to_string()));
     let project_root =
         std::path::PathBuf::from(args.project_root.clone().unwrap_or_else(|| ".".to_string()));
+
+    if args.mesh {
+        let secret = args.secret.clone().ok_or_else(|| {
+            anyhow::anyhow!("--mesh requires --secret <room-secret> (shared by the team)")
+        })?;
+        let seed_peers = resolve_peers(&args.peers)?;
+        let node = sync::MeshNode::new(room, user, &secret, project_root, args.mesh_port)
+            .with_seed_peers(seed_peers);
+        return node.run().await.map_err(Into::into);
+    }
+
+    let server = args
+        .server
+        .clone()
+        .ok_or_else(|| anyhow::anyhow!("--sync requires --server <ws-url> (or use --mesh)"))?;
+    let token = args
+        .token
+        .clone()
+        .ok_or_else(|| anyhow::anyhow!("--sync requires --token <jwt>"))?;
 
     let cfg = sync::ClientConfig {
         server,
@@ -352,6 +383,22 @@ async fn run_realtime(args: &Args) -> Result<()> {
     };
     let client = sync::SyncClient::new(cfg);
     client.run().await.map_err(Into::into)
+}
+
+/// Resolve `host:port` peer strings to socket addresses (first resolved addr
+/// each). DNS/`/etc/hosts` resolution happens here, at startup.
+fn resolve_peers(specs: &[String]) -> Result<Vec<std::net::SocketAddr>> {
+    use std::net::ToSocketAddrs;
+    let mut out = Vec::with_capacity(specs.len());
+    for spec in specs {
+        let addr = spec
+            .to_socket_addrs()
+            .map_err(|e| anyhow::anyhow!("bad --peer '{spec}': {e}"))?
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("--peer '{spec}' resolved to no address"))?;
+        out.push(addr);
+    }
+    Ok(out)
 }
 
 /// Initialize structured tracing for the sync client side, mirroring

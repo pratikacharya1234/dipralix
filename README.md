@@ -1,6 +1,6 @@
 # dipralix
 
-A multi-model terminal coding agent. One 12 MB binary, written in Rust. Free with Gemini's API; brings Claude and OpenAI keys along when I want them.
+A multi-model terminal coding agent with realtime team sync. Written in Rust, shipped as two small binaries. Free with Gemini's API; brings Claude and OpenAI keys along when I want them.
 
 I built this because the rest of the field made the wrong tradeoffs for me. Cursor logged me out twice a week. Claude Code's billing made me check the dashboard before I started writing. Aider had the right philosophy but the wrong language. So I sat down, wrote my own, and shipped it.
 
@@ -10,7 +10,7 @@ It's not the best at any one thing. It is the one I reach for first.
 $ dipralix-cli
   [MODEL] auto → claude-4-sonnet  (complex task → Claude balanced reasoning)
   [OK] Loaded .dipralix/safety.toml
-  v0.1.0  ·  17 tools  ·  4-level safety  ·  MCP enabled
+  v0.3.0  ·  17 tools  ·  4-level safety  ·  MCP enabled  ·  realtime sync
 
 >>> add rate limiting to the public /api/users endpoint, 60 rpm per IP
 
@@ -28,9 +28,9 @@ That's the whole loop. It plans, it does, it verifies, it tells you what happene
 
 ---
 
-## Install
+## ■ Install
 
-Pick the line for your machine. Each one drops the prebuilt v0.1.0 binary on your PATH.
+Pick the line for your machine. Each one drops the prebuilt v0.3.0 binaries (`dipralix-cli` and `dipralix-server`) on your PATH.
 
 ```bash
 # macOS · Linux
@@ -59,9 +59,9 @@ That's it. No login server. No telemetry. No subscription. You can `dipralix-cli
 
 ---
 
-## What's in the box
+## ◆ What's in the box
 
-- **One binary.** 12 MB on macOS arm64. Static, no Node, no Python, no Docker.
+- **Two binaries.** `dipralix-cli` (the agent) and `dipralix-server` (the optional sync relay). Static, no Node, no Python, no Docker.
 - **Three providers, one interface.** Gemini, Claude, OpenAI. Default routing is `auto` — it reads your prompt and picks a model. Override with `--model gemini-2.5-pro` when you know better.
 - **17 tools.** Read, write, edit, append, bash, list, list_symbols, search, glob, mkdir, delete, move, copy, url_fetch, git_snapshot, memorize_decision, memorize_pattern.
 - **33 integration calls.** GitHub (12), Discord (7), Gmail (7), Drive (7). OAuth2 with auto-refresh.
@@ -75,7 +75,38 @@ That's it. No login server. No telemetry. No subscription. You can `dipralix-cli
 
 ---
 
-## What's honest
+## ● Realtime team sync
+
+Two developers, two terminals, one shared `.dipralix/` — memory, plans, skills, and approval policy stay in sync as you work. Source code never leaves your machine (only `.dipralix/` metadata syncs; an allowlist rejects source, `.env`, secrets, and keys before they touch the wire).
+
+Two ways to connect, both end-to-end encrypted:
+
+```bash
+# ◇ Serverless mesh — same LAN, no server. Peers find each other over mDNS.
+#   The shared secret is stretched into a Noise key; only peers who know it join.
+dipralix-cli --sync --mesh --room myproject --secret "team-passphrase" --user alice
+
+# ◆ Self-hosted relay — across networks. One person runs the server on any box.
+dipralix-server --port 7878 --token-secret "$SYNC_SECRET"
+dipralix-cli --sync --server ws://your-host:7878 --token "$JWT" --room myproject --user alice
+```
+
+What is real today and tested:
+
+- **Encrypted transport.** Noise `NNpsk0` (X25519 + ChaCha20-Poly1305) on every mesh link; ephemeral keys per session, mutual auth from the room secret. A captured frame is ciphertext.
+- **mDNS LAN discovery.** `_dipralix._tcp.local.`, room-scoped. No STUN, no TURN, no central server.
+- **File gossip with echo-suppression.** blake3 content hashing; snapshot-on-connect so a late joiner converges on current state.
+- **Server relay.** JWT-per-room auth, SQLite persistence (`--persist`), replay-on-reconnect.
+- **Presence, team chat, and a 2-of-N approval quorum** for high-risk commands.
+
+What is **not** done yet — said plainly:
+
+- **Mesh is LAN-only.** mDNS is link-local, so the serverless mesh finds peers on the same network. Across the internet, use the relay server or pass `--peer host:port` manually. WebRTC/NAT-traversal is intentionally not in this build.
+- **No CRDT merge yet.** Concurrent edits to the same file are last-write-wins by content hash, not a character-level merge.
+
+---
+
+## ▲ What's honest
 
 Some things I don't pretend to have figured out:
 
@@ -90,7 +121,7 @@ If you hit something rough, file it: https://github.com/pratikacharya1234/dipral
 
 ---
 
-## Configure
+## ◇ Configure
 
 `~/.dipralix/config.toml`:
 
@@ -123,7 +154,7 @@ Per-project: `.dipralix/project.md` (instructions the agent reads on startup), `
 
 ---
 
-## How to drive it
+## ▸ How to drive it
 
 The agent runs in a REPL. Slash commands cover the things you don't want to say in English:
 
@@ -154,7 +185,7 @@ dipralix-cli --ci                 # JSON output, exit code = success
 
 ---
 
-## Why I wrote this
+## ▪ Why I wrote this
 
 I write Rust most days. I want my tools to be Rust too. I want them to be one binary I can put on a Pi, on a server, on my laptop, the same binary. I want to read the code that's running. I want a free tier I can introduce my friends to without asking for a credit card. I want to not get logged out.
 
@@ -164,11 +195,12 @@ So that's what this is.
 
 ---
 
-## Architecture (one page)
+## □ Architecture (one page)
 
 ```
 src/
   main.rs            CLI entry. Resolves api keys, model, profile, then hands off.
+  bin/server.rs      dipralix-server: WebSocket relay, JWT auth, SQLite persistence.
   agent.rs           The REPL, the agentic loop, the slash commands. Streams output.
   backend.rs         Provider dispatch. Gemini SSE, Anthropic SSE, OpenAI non-stream.
   orchestrator.rs    Decompose → dispatch → consensus → merge. Multi-model pipeline.
@@ -188,25 +220,27 @@ src/
   integrations/      GitHub, Discord, Gmail, Drive.
   session.rs         Session save/restore.
   audit.rs           JSON audit log of every tool call.
+  sync/              Realtime sync: protocol, server client, mesh (mDNS + Noise
+                     TCP), crypto, discovery, presence, chat, approval quorum.
 ```
 
 If you want to add a tool, `CONTRIBUTING.md` walks you through it.
 
 ---
 
-## IDE bridge
+## ▶ IDE bridge
 
 There's a VS Code extension at [`ide/vscode/`](ide/vscode/). It adds one feature: a "▶ Run with Dipralix" CodeLens above every `// DIPRALIX:` comment in your source. Click it, the task runs in a terminal. Build it with `cd ide/vscode && npm install && npm run compile`. Package and install per the [extension README](ide/vscode/README.md).
 
 ---
 
-## License
+## ◈ License
 
 MIT.
 
-## Thanks
+## ◎ Thanks
 
-The model providers built the APIs. The Rust ecosystem built the rest — `tokio`, `reqwest`, `clap`, `serde`, `rustyline`, `walkdir`, `colored`, `anyhow`, `thiserror`. I just glued them together with opinions.
+The model providers built the APIs. The Rust ecosystem built the rest — `tokio`, `reqwest`, `clap`, `serde`, `rustyline`, `walkdir`, `colored`, `anyhow`, `thiserror`, plus `snow` (Noise), `mdns-sd`, `tokio-tungstenite`, `blake3`, and `rusqlite` for the sync layer. I just glued them together with opinions.
 
 ---
 

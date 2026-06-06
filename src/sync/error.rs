@@ -40,6 +40,11 @@ pub enum SyncError {
     #[error("tungstenite error: {0}")]
     Tungstenite(Box<tokio_tungstenite::tungstenite::Error>),
 
+    /// End-to-end crypto failure: Noise handshake rejected (wrong PSK),
+    /// decryption/authentication tag mismatch, or cipher-state misuse.
+    #[error("crypto error: {0}")]
+    Crypto(String),
+
     /// The path being synced is outside the allowlist (e.g. source code,
     /// `config.local`, anything containing an API key).
     #[error("path rejected by allowlist: {0}")]

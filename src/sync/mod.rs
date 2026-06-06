@@ -10,8 +10,10 @@
 //! - `presence::{Roster, SharedRoster, PresenceEntry}` — Phase 2
 //!   liveness/presence tracking.
 //! - `chat` — Phase 2 append-only team chat.
-//! - `mesh` — Phase 3 transport-agnostic sync over P2P (stubs
-//!   here; see the module docs).
+//! - `crypto` — Phase 4 Noise (`NNpsk0`) end-to-end encryption.
+//! - `discovery` — Phase 3 mDNS service advertise/browse.
+//! - `mesh` — Phase 3 serverless P2P sync over mDNS-discovered,
+//!   Noise-encrypted TCP links.
 
 #![deny(clippy::all)]
 #![allow(clippy::module_name_repetitions)]
@@ -22,7 +24,9 @@ pub mod allowlist;
 pub mod chat;
 pub mod client;
 pub mod crypto;
+pub mod discovery;
 pub mod error;
+pub mod fileio;
 pub mod mesh;
 pub mod presence;
 pub mod protocol;
@@ -42,12 +46,17 @@ pub use chat::{
 #[allow(unused_imports)]
 pub use client::{ClientConfig, SyncClient, WsSink, WsStream};
 #[allow(unused_imports)]
-pub use crypto::{Psk, PSK_LEN};
+pub use crypto::{Handshake, Psk, Transport as NoiseTransport, NOISE_PARAMS, PSK_LEN};
+#[allow(unused_imports)]
+pub use discovery::{Discovery, SERVICE_TYPE};
 #[allow(unused_imports)]
 pub use error::{Result, SyncError};
 #[allow(unused_imports)]
+pub use fileio::FileSync;
+#[allow(unused_imports)]
 pub use mesh::{
-    MeshConfig, MeshPeer, MeshRole, MeshSession, MeshTransport, SyncTransport, WsTransport,
+    MeshConfig, MeshNode, MeshPeer, MeshRole, MeshSession, MeshTransport, SyncTransport,
+    TcpTransport, WsTransport,
 };
 #[allow(unused_imports)]
 pub use presence::{PresenceEntry, Roster, SharedRoster, HEARTBEAT_INTERVAL, STALE_AFTER};

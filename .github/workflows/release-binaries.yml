@@ -66,25 +66,27 @@ jobs:
           git checkout "${{ steps.tag.outputs.tag }}"
 
       - name: Build (release)
-        run: cargo build --release --target ${{ matrix.target }} --bin dipralix-cli
+        run: cargo build --release --target ${{ matrix.target }} --bin dipralix-cli --bin dipralix-server
 
       - name: Package (Unix)
         if: matrix.archive == 'tar.gz'
         shell: bash
         run: |
           mkdir -p packages
-          cp "target/${{ matrix.target }}/release/${{ matrix.bin }}" "./${{ matrix.bin }}"
-          tar -czf "packages/dipralix-${{ steps.tag.outputs.tag }}-${{ matrix.asset_suffix }}.tar.gz" "${{ matrix.bin }}"
-          rm "./${{ matrix.bin }}"
+          cp "target/${{ matrix.target }}/release/dipralix-cli" "./dipralix-cli"
+          cp "target/${{ matrix.target }}/release/dipralix-server" "./dipralix-server"
+          tar -czf "packages/dipralix-${{ steps.tag.outputs.tag }}-${{ matrix.asset_suffix }}.tar.gz" dipralix-cli dipralix-server
+          rm "./dipralix-cli" "./dipralix-server"
 
       - name: Package (Windows)
         if: matrix.archive == 'zip'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path packages | Out-Null
-          Copy-Item "target/${{ matrix.target }}/release/${{ matrix.bin }}" -Destination "./${{ matrix.bin }}"
-          Compress-Archive -Path "${{ matrix.bin }}" -DestinationPath "packages/dipralix-${{ steps.tag.outputs.tag }}-${{ matrix.asset_suffix }}.zip" -Force
-          Remove-Item "./${{ matrix.bin }}"
+          Copy-Item "target/${{ matrix.target }}/release/dipralix-cli.exe" -Destination "./dipralix-cli.exe"
+          Copy-Item "target/${{ matrix.target }}/release/dipralix-server.exe" -Destination "./dipralix-server.exe"
+          Compress-Archive -Path "dipralix-cli.exe","dipralix-server.exe" -DestinationPath "packages/dipralix-${{ steps.tag.outputs.tag }}-${{ matrix.asset_suffix }}.zip" -Force
+          Remove-Item "./dipralix-cli.exe","./dipralix-server.exe"
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
