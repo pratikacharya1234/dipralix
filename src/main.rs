@@ -204,13 +204,7 @@ async fn main() -> Result<()> {
         .or(file_cfg.api_key)
         .or_else(|| std::env::var("DIPRALIX_API_KEY").ok())
         .or_else(|| std::env::var("GEMINI_API_KEY").ok())
-        .unwrap_or_else(|| {
-            if has_alt_key {
-                String::new() // OK — user will switch model before using Gemini
-            } else {
-                String::new() // Will fail on first Gemini API call
-            }
-        });
+        .unwrap_or_default();
 
     if api_key.is_empty() && !has_alt_key {
         anyhow::bail!(

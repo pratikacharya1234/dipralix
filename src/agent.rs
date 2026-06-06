@@ -2239,10 +2239,9 @@ async fn agentic_loop(
                 let args_summary = fmt_args_compact(&fc.args);
                 let num = i + 1;
                 println!(
-                    "  ║  {} {}  {}",
+                    "  ║  {} {}   ",
                     num.to_string().cyan(),
                     fc.name.yellow().bold(),
-                    " ".to_string()
                 );
                 if !args_summary.is_empty() {
                     let truncated = if args_summary.len() > 30 {
@@ -2654,7 +2653,7 @@ pub fn resolve_auto_model(config: &Config, prompt: &str) -> Config {
     let mut out = config.clone();
     if out.model == "auto" {
         let (picked, reason) = auto_route_model(config, prompt);
-        eprintln!("  {} auto → {}  ({})", "[MODEL]", picked, reason);
+        eprintln!("  [MODEL] auto → {}  ({})", picked, reason);
         out.model = picked.to_string();
     }
     out
@@ -2772,6 +2771,7 @@ fn auto_route_model(config: &Config, message: &str) -> (&'static str, &'static s
 
 // ── /test-fix loop ───────────────────────────────────────────────────────────
 
+#[allow(clippy::too_many_arguments)]
 async fn test_fix_loop(
     client: &BackendClient,
     history: &mut Vec<Content>,

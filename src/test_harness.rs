@@ -3,7 +3,6 @@
 /// Tests cover: provider detection, type conversion, safety classification,
 /// context windows, token counting, dependency ordering, and backend
 /// response parsing — all without requiring API keys.
-
 #[cfg(test)]
 mod provider_tests {
     use crate::backend;

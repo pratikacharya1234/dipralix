@@ -20,6 +20,26 @@ pub enum ContentKind {
     Binary,
 }
 
+/// Coarse liveness for a team member.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PresenceStatus {
+    /// User is actively driving the session.
+    Active,
+    /// User's client is still connected but no recent input.
+    Idle,
+    /// User has explicitly closed the session or timed out.
+    Offline,
+}
+
+/// Vote kind for [`SyncMessage::ApprovalVote`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ApprovalVoteKind {
+    Approve,
+    Deny,
+}
+
 /// A single frame on the sync wire.
 ///
 /// Variants are intentionally flat — no nesting beyond what the server
@@ -80,6 +100,88 @@ pub enum SyncMessage {
     /// Client → server, response to a [`SyncMessage::Ping`].
     Pong {
         /// Echoed timestamp from the matching [`SyncMessage::Ping`].
+        ts_ms: u64,
+    },
+
+    // ─── Phase 2: real-time UX ──────────────────────────────────────
+    /// Either side: a presence heartbeat. Sent every 10s and on
+    /// activity change. The server fans it out to every other
+    /// member of the room.
+    Presence {
+        /// Stable user identity (`Join::user`).
+        user: String,
+        /// One of `"active"`, `"idle"`, `"offline"`.
+        status: PresenceStatus,
+        /// Last action the user took (e.g. "editing memory/x.md",
+        /// "running tests"). Free-form, ≤120 chars; clients truncate.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        activity: Option<String>,
+        /// Client time in ms since epoch when the heartbeat was sent.
+        ts_ms: u64,
+    },
+
+    /// Either side: a chat line. The server stores the message in
+    /// the per-room `dipralix-chat.log` and broadcasts to all
+    /// other clients. Chat is append-only — no edits, no deletes.
+    Chat {
+        /// Author identity.
+        user: String,
+        /// Message body (single line; newline is a literal `\\n`).
+        text: String,
+        /// Server time in ms since epoch (set by the server).
+        ts_ms: u64,
+    },
+
+    /// Either side: a request to invoke a high-risk action that
+    /// requires remote team approval. The requestor sends
+    /// `ApprovalRequest` and waits for `required_approvers` many
+    /// `ApprovalVote::Approve` messages. Any single `Deny`
+    /// short-circuits and rejects the request.
+    ApprovalRequest {
+        /// Unique id (UUID-like). The same id flows through
+        /// `ApprovalVote` so a vote can be tied back.
+        request_id: String,
+        /// The action being requested, e.g. `"bash"`,
+        /// `"bash.docker_run"`, `"bash.deploy.production"`.
+        action: String,
+        /// Free-form payload that describes the action for human
+        /// reviewers (e.g. the actual `docker run` command).
+        payload: String,
+        /// The user who made the request.
+        requester: String,
+        /// Number of distinct `Approve` votes required.
+        required_approvers: u32,
+        /// Server time when the request was registered.
+        ts_ms: u64,
+    },
+
+    /// Either side: a vote on an [`SyncMessage::ApprovalRequest`].
+    ApprovalVote {
+        /// The id of the request being voted on.
+        request_id: String,
+        /// The voter (must be a different user from the requester
+        /// to count; self-votes are ignored by the server).
+        voter: String,
+        /// The vote itself.
+        vote: ApprovalVoteKind,
+        /// Optional free-form reason. Required for `Deny` to
+        /// make the audit log useful.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        reason: Option<String>,
+        ts_ms: u64,
+    },
+
+    /// Server → client: an `ApprovalRequest` has been resolved.
+    /// Sent after the quorum is reached (or any deny short-circuits).
+    ApprovalDecision {
+        request_id: String,
+        /// Whether the request was approved.
+        approved: bool,
+        /// Approvals collected (may be fewer than `required_approvers`
+        /// if a deny came in first).
+        approvals: Vec<String>,
+        /// Voters who denied (always 0 or 1 in Phase 2).
+        denials: Vec<String>,
         ts_ms: u64,
     },
 }
@@ -170,6 +272,11 @@ impl SyncMessage {
             SyncMessage::Error { .. } => "error",
             SyncMessage::Ping { .. } => "ping",
             SyncMessage::Pong { .. } => "pong",
+            SyncMessage::Presence { .. } => "presence",
+            SyncMessage::Chat { .. } => "chat",
+            SyncMessage::ApprovalRequest { .. } => "approval_request",
+            SyncMessage::ApprovalVote { .. } => "approval_vote",
+            SyncMessage::ApprovalDecision { .. } => "approval_decision",
         }
     }
 }
@@ -272,5 +379,81 @@ mod tests {
             .kind(),
             "ack"
         );
+    }
+
+    #[test]
+    fn round_trip_presence() {
+        let m = SyncMessage::Presence {
+            user: "alice".into(),
+            status: PresenceStatus::Active,
+            activity: Some("editing memory/x.md".into()),
+            ts_ms: 1234,
+        };
+        let back = SyncMessage::decode(&m.encode().unwrap()).unwrap();
+        assert_eq!(m, back);
+    }
+
+    #[test]
+    fn round_trip_chat() {
+        let m = SyncMessage::Chat {
+            user: "bob".into(),
+            text: "checking the pool size".into(),
+            ts_ms: 5678,
+        };
+        let back = SyncMessage::decode(&m.encode().unwrap()).unwrap();
+        assert_eq!(m, back);
+    }
+
+    #[test]
+    fn round_trip_approval_request() {
+        let m = SyncMessage::ApprovalRequest {
+            request_id: "req-1".into(),
+            action: "bash.docker_run".into(),
+            payload: "docker run -it --rm alpine".into(),
+            requester: "alice".into(),
+            required_approvers: 2,
+            ts_ms: 9,
+        };
+        let back = SyncMessage::decode(&m.encode().unwrap()).unwrap();
+        assert_eq!(m, back);
+    }
+
+    #[test]
+    fn round_trip_approval_vote() {
+        let m = SyncMessage::ApprovalVote {
+            request_id: "req-1".into(),
+            voter: "bob".into(),
+            vote: ApprovalVoteKind::Deny,
+            reason: Some("prod data, not now".into()),
+            ts_ms: 10,
+        };
+        let back = SyncMessage::decode(&m.encode().unwrap()).unwrap();
+        assert_eq!(m, back);
+    }
+
+    #[test]
+    fn round_trip_approval_decision() {
+        let m = SyncMessage::ApprovalDecision {
+            request_id: "req-1".into(),
+            approved: true,
+            approvals: vec!["bob".into(), "carol".into()],
+            denials: vec![],
+            ts_ms: 11,
+        };
+        let back = SyncMessage::decode(&m.encode().unwrap()).unwrap();
+        assert_eq!(m, back);
+    }
+
+    #[test]
+    fn presence_status_serializes_lowercase() {
+        let m = SyncMessage::Presence {
+            user: "u".into(),
+            status: PresenceStatus::Idle,
+            activity: None,
+            ts_ms: 0,
+        };
+        let buf = m.encode().unwrap();
+        let s = std::str::from_utf8(&buf).unwrap();
+        assert!(s.contains("\"status\":\"idle\""), "got: {s}");
     }
 }

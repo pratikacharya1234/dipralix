@@ -77,14 +77,23 @@ impl GoogleClient {
     }
 
     async fn get_token(&self) -> Result<String, String> {
-        let token = self
-            .access_token
-            .lock()
-            .map_err(|e| format!("Lock error: {}", e))?;
-        if !token.is_empty() {
-            return Ok(token.clone());
+        // Snapshot the cached token, drop the guard, then await.
+        // The Mutex here is std::sync::Mutex (not async-aware) so
+        // we must not hold the guard across `.await`.
+        let cached: Option<String> = {
+            let token = self
+                .access_token
+                .lock()
+                .map_err(|e| format!("Lock error: {}", e))?;
+            if token.is_empty() {
+                None
+            } else {
+                Some(token.clone())
+            }
+        };
+        if let Some(t) = cached {
+            return Ok(t);
         }
-        drop(token);
 
         if self.refresh_token.is_empty() {
             return Err("No access token or refresh token configured.\n\

@@ -860,11 +860,7 @@ impl AnthropicBackend {
             };
             line_buf.push_str(&String::from_utf8_lossy(&bytes));
 
-            loop {
-                let event_end = match line_buf.find("\n\n") {
-                    Some(pos) => pos,
-                    None => break,
-                };
+            while let Some(event_end) = line_buf.find("\n\n") {
                 let event_text = line_buf[..event_end].to_string();
                 line_buf = line_buf[event_end + 2..].to_string();
 
@@ -1239,7 +1235,6 @@ impl OpenAIBackend {
                         .join("\n");
 
                     // For function responses, create separate tool messages
-                    let mut has_tool_results = false;
                     for part in &content.parts {
                         if let Part::FunctionResponse { function_response } = part {
                             let result_text = function_response
@@ -1257,17 +1252,9 @@ impl OpenAIBackend {
                                 tool_call_id: Some(tool_id.to_string()),
                                 tool_calls: None,
                             });
-                            has_tool_results = true;
                         }
                     }
-                    if !has_tool_results && !text.is_empty() && text != "__TOOL_RESULT__" {
-                        messages.push(OpenAIMessage {
-                            role: "user".into(),
-                            content: Some(text),
-                            tool_calls: None,
-                            tool_call_id: None,
-                        });
-                    } else if has_tool_results && !text.is_empty() && text != "__TOOL_RESULT__" {
+                    if !text.is_empty() && text != "__TOOL_RESULT__" {
                         messages.push(OpenAIMessage {
                             role: "user".into(),
                             content: Some(text),

@@ -195,8 +195,8 @@ fn parse_learnings(content: &str) -> Vec<Learning> {
 
     for line in content.lines() {
         let trimmed = line.trim();
-        if trimmed.starts_with("## ") {
-            current_category = trimmed[3..].to_lowercase();
+        if let Some(rest) = trimmed.strip_prefix("## ") {
+            current_category = rest.to_lowercase();
         } else if trimmed.starts_with("- [") {
             // Format: - [count] pattern → lesson
             if let Some(rest) = trimmed.strip_prefix("- [") {

@@ -37,6 +37,21 @@ pub enum ContentKind {
     Binary,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PresenceStatus {
+    Active,
+    Idle,
+    Offline,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ApprovalVoteKind {
+    Approve,
+    Deny,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FileUpdate {
     pub path: String,
@@ -81,6 +96,41 @@ enum Wire {
     Pong {
         ts_ms: u64,
     },
+    Presence {
+        user: String,
+        status: PresenceStatus,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        activity: Option<String>,
+        ts_ms: u64,
+    },
+    Chat {
+        user: String,
+        text: String,
+        ts_ms: u64,
+    },
+    ApprovalRequest {
+        request_id: String,
+        action: String,
+        payload: String,
+        requester: String,
+        required_approvers: u32,
+        ts_ms: u64,
+    },
+    ApprovalVote {
+        request_id: String,
+        voter: String,
+        vote: ApprovalVoteKind,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        reason: Option<String>,
+        ts_ms: u64,
+    },
+    ApprovalDecision {
+        request_id: String,
+        approved: bool,
+        approvals: Vec<String>,
+        denials: Vec<String>,
+        ts_ms: u64,
+    },
 }
 
 impl Wire {
@@ -93,6 +143,11 @@ impl Wire {
             Wire::Error { .. } => "error",
             Wire::Ping { .. } => "ping",
             Wire::Pong { .. } => "pong",
+            Wire::Presence { .. } => "presence",
+            Wire::Chat { .. } => "chat",
+            Wire::ApprovalRequest { .. } => "approval_request",
+            Wire::ApprovalVote { .. } => "approval_vote",
+            Wire::ApprovalDecision { .. } => "approval_decision",
         }
     }
 }
@@ -302,14 +357,124 @@ fn verify_token(secret: &str, token: &str, expected_room: &str) -> Result<Claims
 
 type RoomTx = mpsc::UnboundedSender<Arc<Wire>>;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ApprovalTallyOutcome {
+    Approved(Vec<String>),
+    Denied(Vec<String>),
+}
+
+/// Per-request tally. Tracks the canonical set of approvals/denials and
+/// returns the first terminal state (quorum reached, single deny, etc.)
+/// the moment it occurs.
+#[derive(Debug, Clone)]
+struct ApprovalTally {
+    requester: String,
+    required: u32,
+    approvals: Vec<String>,
+    denials: Vec<String>,
+}
+
+impl ApprovalTally {
+    fn new(requester: String, required: u32) -> Self {
+        Self {
+            requester,
+            required: required.max(1),
+            approvals: Vec::new(),
+            denials: Vec::new(),
+        }
+    }
+    /// Returns the previous entry (if any) so the caller can decide
+    /// whether to log/announce the change. A return of `Some(outcome)`
+    /// signals the tally has terminated and should be removed.
+    fn record(&mut self, voter: &str, vote: ApprovalVoteKind) -> Option<ApprovalTallyOutcome> {
+        if voter == self.requester {
+            return None;
+        }
+        if self.approvals.iter().any(|v| v == voter) || self.denials.iter().any(|v| v == voter) {
+            return None;
+        }
+        match vote {
+            ApprovalVoteKind::Approve => {
+                self.approvals.push(voter.to_string());
+                if (self.approvals.len() as u32) >= self.required {
+                    Some(ApprovalTallyOutcome::Approved(self.approvals.clone()))
+                } else {
+                    None
+                }
+            }
+            ApprovalVoteKind::Deny => {
+                self.denials.push(voter.to_string());
+                Some(ApprovalTallyOutcome::Denied(self.denials.clone()))
+            }
+        }
+    }
+}
+
+/// Per-room in-memory presence roster. Heartbeats update an entry; a
+/// background sweep drops entries that have gone quiet.
+#[derive(Debug, Default)]
+struct Roster {
+    by_user: HashMap<String, PresenceEntry>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PresenceEntry {
+    pub status: PresenceStatus,
+    pub activity: Option<String>,
+    pub last_seen: std::time::Instant,
+}
+
+const STALE_AFTER: std::time::Duration = std::time::Duration::from_secs(30);
+
+impl Roster {
+    fn update(
+        &mut self,
+        user: &str,
+        status: PresenceStatus,
+        activity: Option<String>,
+    ) -> Option<PresenceEntry> {
+        self.by_user.insert(
+            user.to_string(),
+            PresenceEntry {
+                status,
+                activity,
+                last_seen: std::time::Instant::now(),
+            },
+        )
+    }
+    fn sweep(&mut self) -> Vec<String> {
+        let now = std::time::Instant::now();
+        let before: Vec<String> = self
+            .by_user
+            .iter()
+            .filter(|(_, e)| now.duration_since(e.last_seen) > STALE_AFTER)
+            .map(|(u, _)| u.clone())
+            .collect();
+        for u in &before {
+            self.by_user.remove(u);
+        }
+        before
+    }
+    fn remove(&mut self, user: &str) -> Option<PresenceEntry> {
+        self.by_user.remove(user)
+    }
+}
+
+type SharedRoster = std::sync::Arc<tokio::sync::Mutex<Roster>>;
+type SharedTallies = std::sync::Arc<tokio::sync::Mutex<HashMap<String, ApprovalTally>>>;
+
 struct Registry {
     rooms: RwLock<HashMap<String, Vec<RoomTx>>>,
+    rosters: RwLock<HashMap<String, SharedRoster>>,
+    tallies: RwLock<HashMap<String, SharedTallies>>,
 }
 
 impl Registry {
     fn new() -> Self {
         Self {
             rooms: RwLock::new(HashMap::new()),
+            rosters: RwLock::new(HashMap::new()),
+            tallies: RwLock::new(HashMap::new()),
         }
     }
     async fn add(&self, room: &str, tx: RoomTx) {
@@ -338,6 +503,31 @@ impl Registry {
                 let _ = t.send(msg.clone());
             }
         }
+    }
+    async fn roster_for(&self, room: &str) -> std::sync::Arc<tokio::sync::Mutex<Roster>> {
+        if let Some(r) = self.rosters.read().await.get(room).cloned() {
+            return r;
+        }
+        let mut g = self.rosters.write().await;
+        g.entry(room.to_string())
+            .or_insert_with(|| std::sync::Arc::new(tokio::sync::Mutex::new(Roster::default())))
+            .clone()
+    }
+    async fn tally_for(
+        &self,
+        room: &str,
+    ) -> std::sync::Arc<tokio::sync::Mutex<HashMap<String, ApprovalTally>>> {
+        if let Some(r) = self.tallies.read().await.get(room).cloned() {
+            return r;
+        }
+        let mut g = self.tallies.write().await;
+        g.entry(room.to_string())
+            .or_insert_with(|| {
+                std::sync::Arc::new(tokio::sync::Mutex::new(
+                    HashMap::<String, ApprovalTally>::new(),
+                ))
+            })
+            .clone()
     }
 }
 
@@ -506,6 +696,11 @@ async fn handle_conn(
     registry.add(&room, tx.clone()).await;
 
     let mut ping_ticker = interval(Duration::from_secs(15));
+    let mut presence_ticker = interval(Duration::from_secs(10));
+    // The first tick fires immediately; skip it so the first
+    // presence heartbeat reflects a steady state instead of the
+    // instant of connection.
+    presence_ticker.tick().await;
 
     loop {
         tokio::select! {
@@ -540,6 +735,93 @@ async fn handle_conn(
                         registry.broadcast(&room, Arc::new(Wire::FileUpdate(u)), Some(&tx)).await;
                     }
                     Wire::Pong { .. } => {}
+                    Wire::Presence { user, status, activity, .. } => {
+                        let roster = registry.roster_for(&room).await;
+                        let prev = {
+                            let mut g = roster.lock().await;
+                            g.update(&user, status, activity.clone())
+                        };
+                        if prev.as_ref().map(|p| p.status) != Some(status) {
+                            info!(room = %room, %user, ?status, "presence changed");
+                        }
+                        registry.broadcast(&room, Arc::new(Wire::Presence { user, status, activity, ts_ms: now_ms() }), Some(&tx)).await;
+                    }
+                    Wire::Chat { user, text, ts_ms: _ } => {
+                        // Server is the canonical timestamper; override
+                        // whatever the client claimed and broadcast.
+                        let canonical = Wire::Chat { user, text, ts_ms: now_ms() };
+                        info!(room = %room, "chat relay");
+                        registry.broadcast(&room, Arc::new(canonical), Some(&tx)).await;
+                    }
+                    Wire::ApprovalRequest { request_id, action, payload, requester, required_approvers, ts_ms: _ } => {
+                        info!(room = %room, %request_id, %action, %requester, required_approvers, "approval request");
+                        let tally = registry.tally_for(&room).await;
+                        let mut g = tally.lock().await;
+                        g.insert(request_id.clone(), ApprovalTally::new(requester.clone(), required_approvers));
+                        drop(g);
+                        let canonical = Wire::ApprovalRequest { request_id, action, payload, requester, required_approvers, ts_ms: now_ms() };
+                        registry.broadcast(&room, Arc::new(canonical), Some(&tx)).await;
+                    }
+                    Wire::ApprovalVote { request_id, voter, vote, reason, ts_ms: _ } => {
+                        info!(room = %room, %request_id, %voter, ?vote, "approval vote");
+                        let tally = registry.tally_for(&room).await;
+                        let mut g = tally.lock().await;
+                        if let Some(t) = g.get_mut(&request_id) {
+                            match t.record(&voter, vote) {
+                                Some(ApprovalTallyOutcome::Approved(approvals)) => {
+                                    info!(%request_id, "approval reached quorum; broadcasting decision");
+                                    let decision = Wire::ApprovalDecision {
+                                        request_id: request_id.clone(),
+                                        approved: true,
+                                        approvals,
+                                        denials: vec![],
+                                        ts_ms: now_ms(),
+                                    };
+                                    let _ = reason; // unused on approve
+                                    g.remove(&request_id);
+                                    drop(g);
+                                    // Decision is the canonical result
+                                    // and goes to *every* member of the
+                                    // room — including the voter who
+                                    // tipped the tally, the requester,
+                                    // and any late joiners.
+                                    registry.broadcast(&room, Arc::new(decision), None).await;
+                                }
+                                Some(ApprovalTallyOutcome::Denied(denials)) => {
+                                    info!(%request_id, "approval denied; broadcasting decision");
+                                    let decision = Wire::ApprovalDecision {
+                                        request_id: request_id.clone(),
+                                        approved: false,
+                                        approvals: t.approvals.clone(),
+                                        denials,
+                                        ts_ms: now_ms(),
+                                    };
+                                    let _ = reason; // reason lives on the vote, not the decision
+                                    g.remove(&request_id);
+                                    drop(g);
+                                    // See note above — broadcast to
+                                    // everyone.
+                                    registry.broadcast(&room, Arc::new(decision), None).await;
+                                }
+                                None => {
+                                    drop(g);
+                                }
+                            }
+                        } else {
+                            warn!(%request_id, "vote for unknown request; ignoring");
+                        }
+                        // Echo the vote so other clients (and the
+                        // voter) see it. The voter is excluded by
+                        // `skip = Some(&tx)` so they don't see their
+                        // own vote twice.
+                        let echo = Wire::ApprovalVote { request_id, voter, vote, reason, ts_ms: now_ms() };
+                        registry.broadcast(&room, Arc::new(echo), Some(&tx)).await;
+                    }
+                    Wire::ApprovalDecision { .. } => {
+                        // Clients are not supposed to send decisions.
+                        // The server is the only one that can mint a
+                        // decision. Silently drop.
+                    }
                     other => {
                         debug!(kind = other.kind(), "ignoring unexpected frame after join");
                     }
@@ -559,8 +841,45 @@ async fn handle_conn(
                     break;
                 }
             }
+            _ = presence_ticker.tick() => {
+                // Sweep the per-room roster for stale heartbeats.
+                // Dropped members get a single `Offline` announcement
+                // to the rest of the room so their UI updates.
+                let roster = registry.roster_for(&room).await;
+                let stale = {
+                    let mut g = roster.lock().await;
+                    g.sweep()
+                };
+                for u in stale {
+                    info!(room = %room, %u, "presence expired");
+                    let frame = encode_frame(&Wire::Presence {
+                        user: u,
+                        status: PresenceStatus::Offline,
+                        activity: None,
+                        ts_ms: now_ms(),
+                    })?;
+                    let _ = sink
+                        .send(Message::Text(String::from_utf8_lossy(&frame).into_owned()))
+                        .await;
+                }
+            }
         }
     }
+
+    // Announce departure so the rest of the room can clear the
+    // roster entry. Use a fresh timer-based disconnect broadcast
+    // (not a heartbeat) — the user's status is `Offline`.
+    {
+        let roster = registry.roster_for(&room).await;
+        let _ = roster.lock().await.remove(&user);
+    }
+    let offline = Arc::new(Wire::Presence {
+        user: user.clone(),
+        status: PresenceStatus::Offline,
+        activity: None,
+        ts_ms: now_ms(),
+    });
+    registry.broadcast(&room, offline, None).await;
 
     registry.remove(&room, &tx).await;
     Ok(())

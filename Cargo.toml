@@ -48,3 +48,10 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tokio-tungstenite = { version = "0.21", features = ["native-tls"] }
 rusqlite = { version = "0.31", features = ["bundled"] }
 blake3 = "1"
+async-trait = "0.1"
+
+[dev-dependencies]
+futures      = "0.3"
+jsonwebtoken = { version = "10", default-features = false, features = ["rust_crypto"] }
+libc         = "0.2"
+tracing      = "0.1"

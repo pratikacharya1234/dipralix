@@ -201,7 +201,6 @@ pub struct ApiError {
 // ── HTTP client ────────────────────────────────────────────────────────────────
 
 #[allow(dead_code)]
-#[allow(dead_code)]
 pub struct GeminiClient {
     http: reqwest::Client,
     config: Config,

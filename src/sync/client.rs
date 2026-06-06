@@ -175,6 +175,47 @@ impl SyncClient {
             SyncMessage::Join { .. } | SyncMessage::JoinAck { .. } => Err(SyncError::Protocol(
                 "unexpected Join/JoinAck after handshake".into(),
             )),
+            // Phase 2: presence / chat / approval frames are
+            // currently observed but not yet surfaced in the CLI.
+            // The server is authoritative for them; the client
+            // only needs to acknowledge receipt so the sender's
+            // window can advance. We log at debug to keep the
+            // production log clean.
+            SyncMessage::Presence { user, status, .. } => {
+                debug!(%user, ?status, "presence update");
+                Ok(())
+            }
+            SyncMessage::Chat { user, text, ts_ms } => {
+                info!(%user, ts_ms, "chat: {text}");
+                Ok(())
+            }
+            SyncMessage::ApprovalRequest {
+                request_id,
+                action,
+                requester,
+                required_approvers,
+                ..
+            } => {
+                info!(%request_id, %action, %requester, required_approvers, "approval request");
+                Ok(())
+            }
+            SyncMessage::ApprovalVote {
+                request_id,
+                voter,
+                vote,
+                ..
+            } => {
+                info!(?vote, %request_id, %voter, "approval vote");
+                Ok(())
+            }
+            SyncMessage::ApprovalDecision {
+                request_id,
+                approved,
+                ..
+            } => {
+                info!(%request_id, approved, "approval decision");
+                Ok(())
+            }
         }
     }
 
