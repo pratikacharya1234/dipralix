@@ -13,7 +13,7 @@
 
 $ErrorActionPreference = 'Stop'
 
-$Repo    = 'pratikacharya1234/dipralix'
+$Repo    = if ($env:DIPRALIX_REPO) { $env:DIPRALIX_REPO } else { 'Zyferon/dipralix' }
 $BinName = 'dipralix-cli.exe'
 $Version = if ($env:DIPRALIX_VERSION) { $env:DIPRALIX_VERSION } else { 'latest' }
 
