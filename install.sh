@@ -12,7 +12,7 @@
 
 set -euo pipefail
 
-REPO="pratikacharya1234/dipralix"
+REPO="${DIPRALIX_REPO:-Zyferon/dipralix}"
 VERSION="latest"
 BIN_NAME="dipralix-cli"
 
