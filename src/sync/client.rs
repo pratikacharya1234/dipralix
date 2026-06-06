@@ -6,7 +6,6 @@
 //! - inbound `FileUpdate` frames → local file writes (with hash dedup
 //!   to suppress server-echo loops)
 
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -18,10 +17,8 @@ use tokio_tungstenite::MaybeTlsStream;
 use tokio_tungstenite::WebSocketStream;
 use tracing::{debug, info, warn};
 
-use blake3;
-
-use super::allowlist;
 use super::error::{Result, SyncError};
+use super::fileio::FileSync;
 use super::protocol::{FileUpdate, SyncMessage};
 use super::watcher;
 
@@ -52,18 +49,19 @@ pub struct ClientConfig {
 /// Sync client. One instance = one room connection.
 pub struct SyncClient {
     cfg: ClientConfig,
-    /// `path → last-known blake3 hash`. Used to skip watcher events
-    /// whose content already matches the last value we sent *or*
-    /// received — the server-echo case.
-    last_known: Arc<Mutex<HashMap<String, String>>>,
+    /// Shared file applier with echo-suppression (see [`FileSync`]). Wrapped
+    /// in a mutex so the inbound and watcher branches of the select loop can
+    /// both reach it.
+    fs: Arc<Mutex<FileSync>>,
 }
 
 impl SyncClient {
     /// Build a new client. Does not connect.
     pub fn new(cfg: ClientConfig) -> Self {
+        let fs = FileSync::new(cfg.project_root.clone());
         Self {
             cfg,
-            last_known: Arc::new(Mutex::new(HashMap::new())),
+            fs: Arc::new(Mutex::new(fs)),
         }
     }
 
@@ -220,74 +218,26 @@ impl SyncClient {
     }
 
     async fn handle_local_change(&self, ev: watcher::ChangeEvent, sink: &mut WsSink) -> Result<()> {
-        if !allowlist::is_allowed(&ev.rel_path) {
-            debug!(path = %ev.rel_path, "skipping non-allowed local change");
-            return Ok(());
+        if ev.kind == watcher::ChangeKind::Remove {
+            debug!(path = %ev.rel_path, "remote-only remove (skip in Phase 1)");
         }
-        let abs = self.cfg.project_root.join(&ev.rel_path);
-        let body = match std::fs::read(&abs) {
-            Ok(b) => b,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                if ev.kind == watcher::ChangeKind::Remove {
-                    debug!(path = %ev.rel_path, "remote-only remove (skip in Phase 1)");
-                }
-                return Ok(());
-            }
-            Err(e) => return Err(SyncError::Io(e)),
-        };
-
-        let hash = blake3::hash(&body).to_hex().to_string();
-        {
-            let mut cache = self.last_known.lock().await;
-            if cache.get(&ev.rel_path) == Some(&hash) {
-                debug!(path = %ev.rel_path, "skipping echo / unchanged content");
-                return Ok(());
-            }
-            cache.insert(ev.rel_path.clone(), hash.clone());
+        let maybe_update = self
+            .fs
+            .lock()
+            .await
+            .local_update(&ev.rel_path, &self.cfg.user)?;
+        if let Some(upd) = maybe_update {
+            let size = upd.size;
+            send_frame(sink, &SyncMessage::FileUpdate(upd)).await?;
+            info!(path = %ev.rel_path, size, "sent local change");
         }
-
-        let upd = FileUpdate::from_text(&ev.rel_path, &body, &self.cfg.user);
-        send_frame(sink, &SyncMessage::FileUpdate(upd)).await?;
-        info!(path = %ev.rel_path, size = body.len(), "sent local change");
         Ok(())
     }
 
     async fn apply_remote_update(&self, upd: &FileUpdate) -> Result<()> {
-        if !allowlist::is_allowed(&upd.path) {
-            return Err(SyncError::PathNotAllowed(upd.path.clone()));
+        if self.fs.lock().await.apply(upd)? {
+            info!(path = %upd.path, author = %upd.author, "applied remote change");
         }
-        let abs = self.cfg.project_root.join(&upd.path);
-        if let Ok(existing) = std::fs::read(&abs) {
-            let existing_hash = blake3::hash(&existing).to_hex().to_string();
-            if existing_hash == upd.hash {
-                debug!(path = %upd.path, "remote update already matches local");
-                return Ok(());
-            }
-        }
-        if let Some(parent) = abs.parent() {
-            std::fs::create_dir_all(parent).map_err(SyncError::Io)?;
-        }
-        let bytes = match &upd.content {
-            Some(text) => text.as_bytes().to_vec(),
-            None => match &upd.content_b64 {
-                Some(b64) => {
-                    base64::Engine::decode(&base64::engine::general_purpose::STANDARD, b64)
-                        .map_err(|e| SyncError::Protocol(format!("base64: {e}")))?
-                }
-                None => Vec::new(),
-            },
-        };
-        std::fs::write(&abs, &bytes).map_err(SyncError::Io)?;
-        {
-            let mut cache = self.last_known.lock().await;
-            cache.insert(upd.path.clone(), upd.hash.clone());
-        }
-        info!(
-            path = %upd.path,
-            size = bytes.len(),
-            author = %upd.author,
-            "applied remote change"
-        );
         Ok(())
     }
 }

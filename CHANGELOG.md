@@ -2,6 +2,29 @@
 
 All notable changes to Dipralix (formerly FORGE) are documented in this file.
 
+## [0.3.0] — 2026-06-05
+
+### Added — Realtime team sync (`src/sync/`, `src/bin/server.rs`)
+- **Self-hosted relay (`dipralix-server`):** WebSocket sync server with JWT-per-room auth, SQLite persistence (`--persist`), and replay-on-reconnect. New `[[bin]]` alongside `dipralix-cli`.
+- **Serverless P2P mesh (`dipralix-cli --sync --mesh`):** Real, no-server sync for devs on the same LAN. mDNS discovery (`_dipralix._tcp.local.`, room-scoped) over `mdns-sd`; direct TCP peer links; `--peer host:port` to add peers manually when multicast is blocked.
+- **End-to-end encryption (`src/sync/crypto.rs`):** Noise `NNpsk0_25519_ChaChaPoly_BLAKE2s` on every mesh link. Ephemeral per-session keys (forward secrecy); the room secret is the pre-shared key (mutual auth). Wrong secret fails the handshake; tampered frames fail the AEAD check.
+- **File gossip (`src/sync/fileio.rs`):** Shared, echo-suppressed apply/read used by both the server client and the mesh node — blake3 content hashing, snapshot-on-connect so late joiners converge on current `.dipralix/` state.
+- **Path allowlist:** Only `.dipralix/` metadata syncs; source code, `.env`, secrets, SSH/cloud keys, and `config.local` are rejected before the wire.
+- **Phase 2 UX:** Presence/heartbeat (`presence.rs`), append-only team chat (`chat.rs`), and a 2-of-N approval quorum for high-risk commands.
+
+### Changed
+- Bumped to **0.3.0**. `description` now mentions realtime sync.
+- `release-binaries.yml` now builds and packages **both** `dipralix-cli` and `dipralix-server` for Linux x86_64, macOS x86_64/arm64, and Windows x86_64.
+- `SyncClient` refactored onto the shared `FileSync` applier (removed duplicated apply/read logic).
+- `site/` is no longer tracked in the public repo (`.gitignore` + removed from the index); it is preserved locally and deployed separately.
+
+### Honest scope
+- **Mesh is LAN-only.** mDNS is link-local; cross-internet sync uses the relay server or manual `--peer`. WebRTC/NAT-traversal is intentionally not in this build.
+- **No CRDT merge.** Concurrent edits to one file are last-write-wins by content hash, not character-level merge.
+
+### Verification
+- 155 tests pass (`cargo nextest`), including a two-node mesh that converges a file over real encrypted TCP. `cargo clippy -D warnings`, `cargo fmt --check`, `cargo audit`, and `cargo deny check` all clean.
+
 ## [0.1.0] — 2026-05-31
 
 ### Breaking
