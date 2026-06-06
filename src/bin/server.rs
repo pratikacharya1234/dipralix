@@ -537,7 +537,7 @@ impl Registry {
 #[clap(
     name = "dipralix-server",
     about = "DIPRALIX realtime sync server",
-    version = "0.1.0"
+    version = env!("CARGO_PKG_VERSION")
 )]
 struct Args {
     /// Port to listen on.
