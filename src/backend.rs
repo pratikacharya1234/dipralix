@@ -27,13 +27,27 @@ pub fn detect_provider(model: &str) -> Provider {
         Provider::Gemini
     } else if lower.starts_with("claude") || lower.contains("claude") {
         Provider::Anthropic
-    } else if lower.starts_with("gpt") || lower.starts_with("o1") || lower.starts_with("o3") || lower.starts_with("o4") {
+    } else if lower.starts_with("gpt")
+        || lower.starts_with("o1")
+        || lower.starts_with("o3")
+        || lower.starts_with("o4")
+    {
         Provider::OpenAI
-    } else if lower.contains("llama") || lower.contains("mistral") || lower.contains("codellama")
-        || lower.contains("phi") || lower.contains("qwen") || lower.contains("deepseek")
-        || lower.contains("gemma") || lower.contains("mixtral") || lower.contains("dolphin")
-        || lower.contains("openhermes") || lower.contains("orca") || lower.contains("neural")
-        || lower.contains("yi-") || lower.contains("falcon") || lower.contains("command-r")
+    } else if lower.contains("llama")
+        || lower.contains("mistral")
+        || lower.contains("codellama")
+        || lower.contains("phi")
+        || lower.contains("qwen")
+        || lower.contains("deepseek")
+        || lower.contains("gemma")
+        || lower.contains("mixtral")
+        || lower.contains("dolphin")
+        || lower.contains("openhermes")
+        || lower.contains("orca")
+        || lower.contains("neural")
+        || lower.contains("yi-")
+        || lower.contains("falcon")
+        || lower.contains("command-r")
     {
         Provider::Ollama
     } else {
@@ -66,13 +80,14 @@ impl BackendClient {
             Provider::OpenAI => {
                 let key = config.openai_api_key.as_deref().unwrap_or("");
                 if key.is_empty() {
-                    anyhow::bail!("OpenAI API key required for {}. Set OPENAI_API_KEY or --openai-api-key", config.model);
+                    anyhow::bail!(
+                        "OpenAI API key required for {}. Set OPENAI_API_KEY or --openai-api-key",
+                        config.model
+                    );
                 }
                 Ok(Self::OpenAI(OpenAIBackend::new(key, &config.model)))
             }
-            Provider::Ollama => {
-                Ok(Self::Ollama(OllamaBackend::new(&config.model)))
-            }
+            Provider::Ollama => Ok(Self::Ollama(OllamaBackend::new(&config.model))),
         }
     }
 
@@ -154,26 +169,50 @@ impl GeminiBackend {
     }
 
     fn base_url(&self) -> &str {
-        self.api_base.as_deref().unwrap_or("https://generativelanguage.googleapis.com")
+        self.api_base
+            .as_deref()
+            .unwrap_or("https://generativelanguage.googleapis.com")
     }
 
-    pub async fn generate(&self, request: GenerateContentRequest) -> Result<GenerateContentResponse> {
+    pub async fn generate(
+        &self,
+        request: GenerateContentRequest,
+    ) -> Result<GenerateContentResponse> {
         let url = format!(
             "{}/v1beta/models/{}:generateContent?key={}",
-            self.base_url(), self.model, self.api_key
+            self.base_url(),
+            self.model,
+            self.api_key
         );
-        let resp = self.http.post(&url).json(&request).send().await
+        let resp = self
+            .http
+            .post(&url)
+            .json(&request)
+            .send()
+            .await
             .context("Network request to Gemini API failed")?;
         let status = resp.status();
         let body = resp.text().await.context("Failed to read response body")?;
         let parsed: GenerateContentResponse = serde_json::from_str(&body).with_context(|| {
-            format!("Failed to parse Gemini response (HTTP {}): {}", status, &body[..body.len().min(400)])
+            format!(
+                "Failed to parse Gemini response (HTTP {}): {}",
+                status,
+                &body[..body.len().min(400)]
+            )
         })?;
         if let Some(ref err) = parsed.error {
-            anyhow::bail!("Gemini API error {}: {}", err.code.unwrap_or(0), err.message.as_deref().unwrap_or("unknown"));
+            anyhow::bail!(
+                "Gemini API error {}: {}",
+                err.code.unwrap_or(0),
+                err.message.as_deref().unwrap_or("unknown")
+            );
         }
         if !status.is_success() {
-            anyhow::bail!("Gemini API HTTP {}: {}", status, &body[..body.len().min(400)]);
+            anyhow::bail!(
+                "Gemini API HTTP {}: {}",
+                status,
+                &body[..body.len().min(400)]
+            );
         }
         Ok(parsed)
     }
@@ -186,14 +225,25 @@ impl GeminiBackend {
     ) -> Result<GenerateContentResponse> {
         let url = format!(
             "{}/v1beta/models/{}:streamGenerateContent?alt=sse&key={}",
-            self.base_url(), self.model, self.api_key
+            self.base_url(),
+            self.model,
+            self.api_key
         );
-        let resp = self.http.post(&url).json(request).send().await
+        let resp = self
+            .http
+            .post(&url)
+            .json(request)
+            .send()
+            .await
             .context("Streaming request to Gemini API failed")?;
         let status = resp.status();
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
-            anyhow::bail!("Gemini API HTTP {}: {}", status, &body[..body.len().min(400)]);
+            anyhow::bail!(
+                "Gemini API HTTP {}: {}",
+                status,
+                &body[..body.len().min(400)]
+            );
         }
         let mut stream = resp.bytes_stream();
         let mut line_buf = String::new();
@@ -213,14 +263,21 @@ impl GeminiBackend {
                     Some(pos) => {
                         let line = line_buf[..pos].trim_end_matches('\r').to_string();
                         line_buf = line_buf[pos + 1..].to_string();
-                        if !line.starts_with("data: ") { continue; }
+                        if !line.starts_with("data: ") {
+                            continue;
+                        }
                         let json_str = &line[6..];
-                        if json_str == "[DONE]" { continue; }
-                        let chunk_resp: GenerateContentResponse = match serde_json::from_str(json_str) {
-                            Ok(r) => r,
-                            Err(_) => continue,
-                        };
-                        if let Some(err) = chunk_resp.error { api_error = Some(err); }
+                        if json_str == "[DONE]" {
+                            continue;
+                        }
+                        let chunk_resp: GenerateContentResponse =
+                            match serde_json::from_str(json_str) {
+                                Ok(r) => r,
+                                Err(_) => continue,
+                            };
+                        if let Some(err) = chunk_resp.error {
+                            api_error = Some(err);
+                        }
                         if let Some(candidates) = chunk_resp.candidates {
                             for candidate in candidates {
                                 if let Some(ref fr) = candidate.finish_reason {
@@ -229,7 +286,11 @@ impl GeminiBackend {
                                 if let Some(content) = candidate.content {
                                     for part in content.parts {
                                         match part {
-                                            Part::Text { ref text, thought: Some(true), .. } => {
+                                            Part::Text {
+                                                ref text,
+                                                thought: Some(true),
+                                                ..
+                                            } => {
                                                 on_thought(text);
                                                 all_thought.push_str(text);
                                             }
@@ -251,14 +312,23 @@ impl GeminiBackend {
             }
         }
         if let Some(err) = api_error {
-            anyhow::bail!("Gemini API error {}: {}", err.code.unwrap_or(0), err.message.as_deref().unwrap_or("unknown"));
+            anyhow::bail!(
+                "Gemini API error {}: {}",
+                err.code.unwrap_or(0),
+                err.message.as_deref().unwrap_or("unknown")
+            );
         }
         let mut final_parts: Vec<Part> = Vec::new();
-        if !all_text.is_empty() { final_parts.push(Part::text(all_text)); }
+        if !all_text.is_empty() {
+            final_parts.push(Part::text(all_text));
+        }
         final_parts.extend(extra_parts);
         Ok(GenerateContentResponse {
             candidates: Some(vec![Candidate {
-                content: Some(Content { role: "model".to_string(), parts: final_parts }),
+                content: Some(Content {
+                    role: "model".to_string(),
+                    parts: final_parts,
+                }),
                 finish_reason,
             }]),
             usage_metadata: usage,
@@ -394,29 +464,56 @@ impl AnthropicBackend {
     }
 
     fn convert_tools(tools: &[serde_json::Value]) -> Vec<AnthropicTool> {
-        tools.iter().filter_map(|tool| {
-            let decls = tool.get("functionDeclarations")?.as_array()?;
-            Some(decls.iter().filter_map(|decl| {
-                Some(AnthropicTool {
-                    name: decl.get("name")?.as_str()?.to_string(),
-                    description: decl.get("description")?.as_str()?.to_string(),
-                    input_schema: decl.get("parameters")?.clone(),
-                })
-            }).collect::<Vec<_>>())
-        }).flatten().collect()
+        tools
+            .iter()
+            .filter_map(|tool| {
+                let decls = tool.get("functionDeclarations")?.as_array()?;
+                Some(
+                    decls
+                        .iter()
+                        .filter_map(|decl| {
+                            Some(AnthropicTool {
+                                name: decl.get("name")?.as_str()?.to_string(),
+                                description: decl.get("description")?.as_str()?.to_string(),
+                                input_schema: decl.get("parameters")?.clone(),
+                            })
+                        })
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .flatten()
+            .collect()
     }
 
     fn extract_system(contents: &[Content]) -> (Option<String>, Vec<AnthropicMessage>) {
         let mut system = None;
         let mut messages = Vec::new();
         for content in contents {
-            let text: String = content.parts.iter().filter_map(|p| {
-                if let Part::Text { text, thought: None | Some(false), .. } = p {
-                    if !text.trim().is_empty() { Some(text.as_str()) } else { None }
-                } else { None }
-            }).collect::<Vec<_>>().join("\n");
+            let text: String = content
+                .parts
+                .iter()
+                .filter_map(|p| {
+                    if let Part::Text {
+                        text,
+                        thought: None | Some(false),
+                        ..
+                    } = p
+                    {
+                        if !text.trim().is_empty() {
+                            Some(text.as_str())
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
 
-            if content.role == "system" || (content.role == "user" && system.is_none() && messages.is_empty()) {
+            if content.role == "system"
+                || (content.role == "user" && system.is_none() && messages.is_empty())
+            {
                 // First user message could be system
             }
 
@@ -427,59 +524,112 @@ impl AnthropicBackend {
                 "user" => {
                     let mut anthro_content: Vec<AnthropicContent> = Vec::new();
                     // Text parts
-                    let text_content: String = content.parts.iter().filter_map(|p| {
-                        if let Part::Text { text, thought: None | Some(false), .. } = p {
-                            if !text.trim().is_empty() { Some(text.as_str()) } else { None }
-                        } else { None }
-                    }).collect::<Vec<_>>().join("\n");
+                    let text_content: String = content
+                        .parts
+                        .iter()
+                        .filter_map(|p| {
+                            if let Part::Text {
+                                text,
+                                thought: None | Some(false),
+                                ..
+                            } = p
+                            {
+                                if !text.trim().is_empty() {
+                                    Some(text.as_str())
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n");
                     if !text_content.is_empty() {
                         anthro_content.push(AnthropicContent {
-                            content_type: "text".into(), text: Some(text_content),
-                            name: None, input: None, id: None, thinking: None, signature: None,
-                            tool_use_id: None, content: None,
+                            content_type: "text".into(),
+                            text: Some(text_content),
+                            name: None,
+                            input: None,
+                            id: None,
+                            thinking: None,
+                            signature: None,
+                            tool_use_id: None,
+                            content: None,
                         });
                     }
                     // Tool result parts
                     for part in &content.parts {
                         if let Part::FunctionResponse { function_response } = part {
-                            let result_text = function_response.response
+                            let result_text = function_response
+                                .response
                                 .get("content")
                                 .and_then(|v| v.as_str())
                                 .unwrap_or("");
-                            let tool_id = function_response.id.as_deref().unwrap_or(&function_response.name);
+                            let tool_id = function_response
+                                .id
+                                .as_deref()
+                                .unwrap_or(&function_response.name);
                             anthro_content.push(AnthropicContent {
                                 content_type: "tool_result".into(),
                                 tool_use_id: Some(tool_id.to_string()),
                                 content: Some(vec![AnthropicContent {
                                     content_type: "text".into(),
                                     text: Some(result_text.to_string()),
-                                    name: None, input: None, id: None, thinking: None, signature: None,
-                                    tool_use_id: None, content: None,
+                                    name: None,
+                                    input: None,
+                                    id: None,
+                                    thinking: None,
+                                    signature: None,
+                                    tool_use_id: None,
+                                    content: None,
                                 }]),
-                                text: None, name: None, input: None, id: None, thinking: None, signature: None,
+                                text: None,
+                                name: None,
+                                input: None,
+                                id: None,
+                                thinking: None,
+                                signature: None,
                             });
                         }
                     }
-                    messages.push(AnthropicMessage { role: "user".into(), content: anthro_content });
+                    messages.push(AnthropicMessage {
+                        role: "user".into(),
+                        content: anthro_content,
+                    });
                 }
                 "model" | "assistant" => {
                     let mut anthro_content: Vec<AnthropicContent> = Vec::new();
                     for part in &content.parts {
                         match part {
-                            Part::Text { text, thought: Some(true), .. } => {
+                            Part::Text {
+                                text,
+                                thought: Some(true),
+                                ..
+                            } => {
                                 anthro_content.push(AnthropicContent {
                                     content_type: "thinking".into(),
                                     thinking: Some(text.clone()),
                                     signature: Some(String::new()),
-                                    text: None, name: None, input: None, id: None, tool_use_id: None, content: None,
+                                    text: None,
+                                    name: None,
+                                    input: None,
+                                    id: None,
+                                    tool_use_id: None,
+                                    content: None,
                                 });
                             }
                             Part::Text { text, .. } if !text.trim().is_empty() => {
                                 anthro_content.push(AnthropicContent {
                                     content_type: "text".into(),
                                     text: Some(text.clone()),
-                                    name: None, input: None, id: None, thinking: None, signature: None,
-                                    tool_use_id: None, content: None,
+                                    name: None,
+                                    input: None,
+                                    id: None,
+                                    thinking: None,
+                                    signature: None,
+                                    tool_use_id: None,
+                                    content: None,
                                 });
                             }
                             Part::FunctionCall { function_call, .. } => {
@@ -488,13 +638,20 @@ impl AnthropicBackend {
                                     id: Some(format!("toolu_{}", uuid::Uuid::new_v4())),
                                     name: Some(function_call.name.clone()),
                                     input: Some(function_call.args.clone()),
-                                    text: None, thinking: None, signature: None, tool_use_id: None, content: None,
+                                    text: None,
+                                    thinking: None,
+                                    signature: None,
+                                    tool_use_id: None,
+                                    content: None,
                                 });
                             }
                             _ => {}
                         }
                     }
-                    messages.push(AnthropicMessage { role: "assistant".into(), content: anthro_content });
+                    messages.push(AnthropicMessage {
+                        role: "assistant".into(),
+                        content: anthro_content,
+                    });
                 }
                 _ => {}
             }
@@ -502,10 +659,15 @@ impl AnthropicBackend {
         (system, messages)
     }
 
-    pub async fn generate(&self, request: GenerateContentRequest) -> Result<GenerateContentResponse> {
+    pub async fn generate(
+        &self,
+        request: GenerateContentRequest,
+    ) -> Result<GenerateContentResponse> {
         let (system, messages) = Self::extract_system(&request.contents);
         let tools = Self::convert_tools(&request.tools);
-        let max_tokens = request.generation_config.as_ref()
+        let max_tokens = request
+            .generation_config
+            .as_ref()
             .and_then(|g| g.max_output_tokens)
             .unwrap_or(8192);
 
@@ -535,23 +697,32 @@ impl AnthropicBackend {
             }
         }
 
-        let resp = self.http
+        let resp = self
+            .http
             .post("https://api.anthropic.com/v1/messages")
             .header("x-api-key", &self.api_key)
             .header("anthropic-version", "2023-06-01")
             .json(&anthro_request)
-            .send().await
+            .send()
+            .await
             .context("Network request to Anthropic API failed")?;
 
         let status = resp.status();
-        let body = resp.text().await.context("Failed to read Anthropic response")?;
+        let body = resp
+            .text()
+            .await
+            .context("Failed to read Anthropic response")?;
 
         if !status.is_success() {
-            anyhow::bail!("Anthropic API HTTP {}: {}", status, &body[..body.len().min(400)]);
+            anyhow::bail!(
+                "Anthropic API HTTP {}: {}",
+                status,
+                &body[..body.len().min(400)]
+            );
         }
 
-        let parsed: AnthropicResponse = serde_json::from_str(&body)
-            .context("Failed to parse Anthropic response")?;
+        let parsed: AnthropicResponse =
+            serde_json::from_str(&body).context("Failed to parse Anthropic response")?;
 
         Ok(Self::response_to_gemini(&parsed))
     }
@@ -569,7 +740,11 @@ impl AnthropicBackend {
                 }
                 "thinking" => {
                     if let Some(ref t) = block.thinking {
-                        parts.push(Part::Text { text: t.clone(), thought: Some(true), thought_signature: None });
+                        parts.push(Part::Text {
+                            text: t.clone(),
+                            thought: Some(true),
+                            thought_signature: None,
+                        });
                     }
                 }
                 "tool_use" => {
@@ -595,7 +770,10 @@ impl AnthropicBackend {
 
         GenerateContentResponse {
             candidates: Some(vec![Candidate {
-                content: Some(Content { role: "assistant".into(), parts }),
+                content: Some(Content {
+                    role: "assistant".into(),
+                    parts,
+                }),
                 finish_reason: resp.stop_reason.clone(),
             }]),
             usage_metadata: usage,
@@ -611,7 +789,9 @@ impl AnthropicBackend {
     ) -> Result<GenerateContentResponse> {
         let (system, messages) = Self::extract_system(&request.contents);
         let tools = Self::convert_tools(&request.tools);
-        let max_tokens = request.generation_config.as_ref()
+        let max_tokens = request
+            .generation_config
+            .as_ref()
             .and_then(|g| g.max_output_tokens)
             .unwrap_or(8192);
 
@@ -639,18 +819,24 @@ impl AnthropicBackend {
             }
         }
 
-        let resp = self.http
+        let resp = self
+            .http
             .post("https://api.anthropic.com/v1/messages")
             .header("x-api-key", &self.api_key)
             .header("anthropic-version", "2023-06-01")
             .json(&anthro_request)
-            .send().await
+            .send()
+            .await
             .context("Streaming request to Anthropic API failed")?;
 
         let status = resp.status();
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
-            anyhow::bail!("Anthropic API HTTP {}: {}", status, &body[..body.len().min(400)]);
+            anyhow::bail!(
+                "Anthropic API HTTP {}: {}",
+                status,
+                &body[..body.len().min(400)]
+            );
         }
 
         let mut stream = resp.bytes_stream();
@@ -674,11 +860,7 @@ impl AnthropicBackend {
             };
             line_buf.push_str(&String::from_utf8_lossy(&bytes));
 
-            loop {
-                let event_end = match line_buf.find("\n\n") {
-                    Some(pos) => pos,
-                    None => break,
-                };
+            while let Some(event_end) = line_buf.find("\n\n") {
                 let event_text = line_buf[..event_end].to_string();
                 line_buf = line_buf[event_end + 2..].to_string();
 
@@ -689,7 +871,9 @@ impl AnthropicBackend {
                         data_str = data.trim().to_string();
                     }
                 }
-                if data_str.is_empty() { continue; }
+                if data_str.is_empty() {
+                    continue;
+                }
 
                 let event: AnthropicStreamEvent = match serde_json::from_str(&data_str) {
                     Ok(e) => e,
@@ -701,8 +885,12 @@ impl AnthropicBackend {
                         if let Some(block) = event.content_block {
                             current_block_type = block.content_type.clone();
                             match current_block_type.as_str() {
-                                "text" => { current_text.clear(); }
-                                "thinking" => { current_thinking.clear(); }
+                                "text" => {
+                                    current_text.clear();
+                                }
+                                "thinking" => {
+                                    current_thinking.clear();
+                                }
                                 "tool_use" => {
                                     current_tool_name = block.name.unwrap_or_default();
                                     current_tool_id = block.id.unwrap_or_default();
@@ -736,39 +924,52 @@ impl AnthropicBackend {
                             }
                         }
                     }
-                    "content_block_stop" => {
-                        match current_block_type.as_str() {
-                            "text" => {
-                                if !current_text.is_empty() {
-                                    blocks.push(AnthropicContent {
-                                        content_type: "text".into(),
-                                        text: Some(std::mem::take(&mut current_text)),
-                                        name: None, input: None, id: None, thinking: None, signature: None,
-                                        tool_use_id: None, content: None,
-                                    });
-                                }
-                            }
-                            "thinking" => {
+                    "content_block_stop" => match current_block_type.as_str() {
+                        "text" => {
+                            if !current_text.is_empty() {
                                 blocks.push(AnthropicContent {
-                                    content_type: "thinking".into(),
-                                    thinking: Some(std::mem::take(&mut current_thinking)),
-                                    signature: Some(String::new()),
-                                    text: None, name: None, input: None, id: None, tool_use_id: None, content: None,
+                                    content_type: "text".into(),
+                                    text: Some(std::mem::take(&mut current_text)),
+                                    name: None,
+                                    input: None,
+                                    id: None,
+                                    thinking: None,
+                                    signature: None,
+                                    tool_use_id: None,
+                                    content: None,
                                 });
                             }
-                            "tool_use" => {
-                                let input: serde_json::Value = serde_json::from_str(&current_tool_json).unwrap_or(serde_json::json!({}));
-                                blocks.push(AnthropicContent {
-                                    content_type: "tool_use".into(),
-                                    id: Some(std::mem::take(&mut current_tool_id)),
-                                    name: Some(std::mem::take(&mut current_tool_name)),
-                                    input: Some(input),
-                                    text: None, thinking: None, signature: None, tool_use_id: None, content: None,
-                                });
-                            }
-                            _ => {}
                         }
-                    }
+                        "thinking" => {
+                            blocks.push(AnthropicContent {
+                                content_type: "thinking".into(),
+                                thinking: Some(std::mem::take(&mut current_thinking)),
+                                signature: Some(String::new()),
+                                text: None,
+                                name: None,
+                                input: None,
+                                id: None,
+                                tool_use_id: None,
+                                content: None,
+                            });
+                        }
+                        "tool_use" => {
+                            let input: serde_json::Value = serde_json::from_str(&current_tool_json)
+                                .unwrap_or(serde_json::json!({}));
+                            blocks.push(AnthropicContent {
+                                content_type: "tool_use".into(),
+                                id: Some(std::mem::take(&mut current_tool_id)),
+                                name: Some(std::mem::take(&mut current_tool_name)),
+                                input: Some(input),
+                                text: None,
+                                thinking: None,
+                                signature: None,
+                                tool_use_id: None,
+                                content: None,
+                            });
+                        }
+                        _ => {}
+                    },
                     "message_delta" => {
                         if let Some(delta) = event.delta {
                             stop_reason = delta.stop_reason;
@@ -795,7 +996,11 @@ impl AnthropicBackend {
                 }
                 "thinking" => {
                     if let Some(ref t) = block.thinking {
-                        parts.push(Part::Text { text: t.clone(), thought: Some(true), thought_signature: None });
+                        parts.push(Part::Text {
+                            text: t.clone(),
+                            thought: Some(true),
+                            thought_signature: None,
+                        });
                     }
                 }
                 "tool_use" => {
@@ -804,7 +1009,10 @@ impl AnthropicBackend {
                         args: block.input.clone().unwrap_or(serde_json::json!({})),
                         thought_signature: None,
                     };
-                    parts.push(Part::FunctionCall { function_call: fc, thought_signature: None });
+                    parts.push(Part::FunctionCall {
+                        function_call: fc,
+                        thought_signature: None,
+                    });
                 }
                 _ => {}
             }
@@ -819,7 +1027,10 @@ impl AnthropicBackend {
 
         Ok(GenerateContentResponse {
             candidates: Some(vec![Candidate {
-                content: Some(Content { role: "assistant".into(), parts }),
+                content: Some(Content {
+                    role: "assistant".into(),
+                    parts,
+                }),
                 finish_reason: stop_reason,
             }]),
             usage_metadata: usage_meta,
@@ -887,7 +1098,10 @@ struct OpenAIRequest {
     stream: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     temperature: Option<f32>,
-    #[serde(rename = "max_completion_tokens", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "max_completion_tokens",
+        skip_serializing_if = "Option::is_none"
+    )]
     max_completion_tokens: Option<u32>,
 }
 
@@ -935,19 +1149,37 @@ impl OpenAIBackend {
     }
 
     fn convert_tools(tools: &[serde_json::Value]) -> Vec<OpenAITool> {
-        tools.iter().filter_map(|tool| {
-            let decls = tool.get("functionDeclarations")?.as_array()?;
-            Some(decls.iter().map(|decl| {
-                OpenAITool {
-                    tool_type: "function".into(),
-                    function: OpenAIToolFunction {
-                        name: decl.get("name").and_then(|v| v.as_str()).unwrap_or("").into(),
-                        description: decl.get("description").and_then(|v| v.as_str()).unwrap_or("").into(),
-                        parameters: decl.get("parameters").cloned().unwrap_or(serde_json::json!({})),
-                    },
-                }
-            }).collect::<Vec<_>>())
-        }).flatten().collect()
+        tools
+            .iter()
+            .filter_map(|tool| {
+                let decls = tool.get("functionDeclarations")?.as_array()?;
+                Some(
+                    decls
+                        .iter()
+                        .map(|decl| OpenAITool {
+                            tool_type: "function".into(),
+                            function: OpenAIToolFunction {
+                                name: decl
+                                    .get("name")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("")
+                                    .into(),
+                                description: decl
+                                    .get("description")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("")
+                                    .into(),
+                                parameters: decl
+                                    .get("parameters")
+                                    .cloned()
+                                    .unwrap_or(serde_json::json!({})),
+                            },
+                        })
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .flatten()
+            .collect()
     }
 
     fn convert_messages(contents: &[Content]) -> Vec<OpenAIMessage> {
@@ -955,81 +1187,134 @@ impl OpenAIBackend {
         for content in contents {
             match content.role.as_str() {
                 "system" => {
-                    let text: String = content.parts.iter().filter_map(|p| {
-                        if let Part::Text { text, thought: None | Some(false), .. } = p { Some(text.as_str()) } else { None }
-                    }).collect::<Vec<_>>().join("\n");
+                    let text: String = content
+                        .parts
+                        .iter()
+                        .filter_map(|p| {
+                            if let Part::Text {
+                                text,
+                                thought: None | Some(false),
+                                ..
+                            } = p
+                            {
+                                Some(text.as_str())
+                            } else {
+                                None
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n");
                     if !text.is_empty() {
                         messages.push(OpenAIMessage {
-                            role: "system".into(), content: Some(text),
-                            tool_calls: None, tool_call_id: None,
+                            role: "system".into(),
+                            content: Some(text),
+                            tool_calls: None,
+                            tool_call_id: None,
                         });
                     }
                 }
                 "user" => {
-                    let text: String = content.parts.iter().filter_map(|p| {
-                        match p {
-                            Part::Text { text, thought: None | Some(false), .. } if !text.trim().is_empty() => Some(text.as_str()),
-                            Part::FunctionResponse { .. } => {
-                                // Tool results handled separately below as tool messages
-                                Some("__TOOL_RESULT__")
+                    let text: String = content
+                        .parts
+                        .iter()
+                        .filter_map(|p| {
+                            match p {
+                                Part::Text {
+                                    text,
+                                    thought: None | Some(false),
+                                    ..
+                                } if !text.trim().is_empty() => Some(text.as_str()),
+                                Part::FunctionResponse { .. } => {
+                                    // Tool results handled separately below as tool messages
+                                    Some("__TOOL_RESULT__")
+                                }
+                                _ => None,
                             }
-                            _ => None,
-                        }
-                    }).collect::<Vec<_>>().join("\n");
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n");
 
                     // For function responses, create separate tool messages
-                    let mut has_tool_results = false;
                     for part in &content.parts {
                         if let Part::FunctionResponse { function_response } = part {
-                            let result_text = function_response.response.get("content")
-                                .and_then(|v| v.as_str()).unwrap_or("");
-                            let tool_id = function_response.id.as_deref().unwrap_or(&function_response.name);
+                            let result_text = function_response
+                                .response
+                                .get("content")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("");
+                            let tool_id = function_response
+                                .id
+                                .as_deref()
+                                .unwrap_or(&function_response.name);
                             messages.push(OpenAIMessage {
                                 role: "tool".into(),
                                 content: Some(result_text.to_string()),
                                 tool_call_id: Some(tool_id.to_string()),
                                 tool_calls: None,
                             });
-                            has_tool_results = true;
                         }
                     }
-                    if !has_tool_results && !text.is_empty() && text != "__TOOL_RESULT__" {
+                    if !text.is_empty() && text != "__TOOL_RESULT__" {
                         messages.push(OpenAIMessage {
-                            role: "user".into(), content: Some(text),
-                            tool_calls: None, tool_call_id: None,
-                        });
-                    } else if has_tool_results && !text.is_empty() && text != "__TOOL_RESULT__" {
-                        messages.push(OpenAIMessage {
-                            role: "user".into(), content: Some(text),
-                            tool_calls: None, tool_call_id: None,
+                            role: "user".into(),
+                            content: Some(text),
+                            tool_calls: None,
+                            tool_call_id: None,
                         });
                     }
                 }
                 "model" | "assistant" => {
-                    let text: String = content.parts.iter().filter_map(|p| {
-                        if let Part::Text { text, thought: None | Some(false), .. } = p {
-                            if !text.trim().is_empty() { Some(text.as_str()) } else { None }
-                        } else { None }
-                    }).collect::<Vec<_>>().join("\n");
+                    let text: String = content
+                        .parts
+                        .iter()
+                        .filter_map(|p| {
+                            if let Part::Text {
+                                text,
+                                thought: None | Some(false),
+                                ..
+                            } = p
+                            {
+                                if !text.trim().is_empty() {
+                                    Some(text.as_str())
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n");
 
-                    let tool_calls: Vec<OpenAIToolCall> = content.parts.iter().enumerate().filter_map(|(i, p)| {
-                        if let Part::FunctionCall { function_call, .. } = p {
-                            Some(OpenAIToolCall {
-                                index: i,
-                                id: format!("call_{}", uuid::Uuid::new_v4()),
-                                call_type: "function".into(),
-                                function: OpenAIFunction {
-                                    name: function_call.name.clone(),
-                                    arguments: function_call.args.to_string(),
-                                },
-                            })
-                        } else { None }
-                    }).collect();
+                    let tool_calls: Vec<OpenAIToolCall> = content
+                        .parts
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(i, p)| {
+                            if let Part::FunctionCall { function_call, .. } = p {
+                                Some(OpenAIToolCall {
+                                    index: i,
+                                    id: format!("call_{}", uuid::Uuid::new_v4()),
+                                    call_type: "function".into(),
+                                    function: OpenAIFunction {
+                                        name: function_call.name.clone(),
+                                        arguments: function_call.args.to_string(),
+                                    },
+                                })
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
 
                     messages.push(OpenAIMessage {
                         role: "assistant".into(),
                         content: if text.is_empty() { None } else { Some(text) },
-                        tool_calls: if tool_calls.is_empty() { None } else { Some(tool_calls) },
+                        tool_calls: if tool_calls.is_empty() {
+                            None
+                        } else {
+                            Some(tool_calls)
+                        },
                         tool_call_id: None,
                     });
                 }
@@ -1039,13 +1324,20 @@ impl OpenAIBackend {
         messages
     }
 
-    pub async fn generate(&self, request: GenerateContentRequest) -> Result<GenerateContentResponse> {
+    pub async fn generate(
+        &self,
+        request: GenerateContentRequest,
+    ) -> Result<GenerateContentResponse> {
         let messages = Self::convert_messages(&request.contents);
         let tools = Self::convert_tools(&request.tools);
-        let max_tokens = request.generation_config.as_ref()
+        let max_tokens = request
+            .generation_config
+            .as_ref()
             .and_then(|g| g.max_output_tokens)
             .unwrap_or(4096);
-        let temperature = request.generation_config.as_ref()
+        let temperature = request
+            .generation_config
+            .as_ref()
             .and_then(|g| g.temperature);
 
         let oai_request = OpenAIRequest {
@@ -1057,22 +1349,31 @@ impl OpenAIBackend {
             max_completion_tokens: Some(max_tokens),
         };
 
-        let resp = self.http
+        let resp = self
+            .http
             .post("https://api.openai.com/v1/chat/completions")
             .header("Authorization", format!("Bearer {}", self.api_key))
             .json(&oai_request)
-            .send().await
+            .send()
+            .await
             .context("Network request to OpenAI API failed")?;
 
         let status = resp.status();
-        let body = resp.text().await.context("Failed to read OpenAI response")?;
+        let body = resp
+            .text()
+            .await
+            .context("Failed to read OpenAI response")?;
 
         if !status.is_success() {
-            anyhow::bail!("OpenAI API HTTP {}: {}", status, &body[..body.len().min(400)]);
+            anyhow::bail!(
+                "OpenAI API HTTP {}: {}",
+                status,
+                &body[..body.len().min(400)]
+            );
         }
 
-        let parsed: OpenAIResponse = serde_json::from_str(&body)
-            .context("Failed to parse OpenAI response")?;
+        let parsed: OpenAIResponse =
+            serde_json::from_str(&body).context("Failed to parse OpenAI response")?;
 
         Ok(Self::response_to_gemini(&parsed))
     }
@@ -1111,7 +1412,10 @@ impl OpenAIBackend {
 
         GenerateContentResponse {
             candidates: Some(vec![Candidate {
-                content: Some(Content { role: "assistant".into(), parts }),
+                content: Some(Content {
+                    role: "assistant".into(),
+                    parts,
+                }),
                 finish_reason: resp.choices.first().and_then(|c| c.finish_reason.clone()),
             }]),
             usage_metadata: usage,
@@ -1129,10 +1433,14 @@ impl OpenAIBackend {
 
         let messages = Self::convert_messages(&request.contents);
         let tools = Self::convert_tools(&request.tools);
-        let max_tokens = request.generation_config.as_ref()
+        let max_tokens = request
+            .generation_config
+            .as_ref()
             .and_then(|g| g.max_output_tokens)
             .unwrap_or(4096);
-        let temperature = request.generation_config.as_ref()
+        let temperature = request
+            .generation_config
+            .as_ref()
             .and_then(|g| g.temperature);
 
         let oai_request = OpenAIRequest {
@@ -1144,17 +1452,23 @@ impl OpenAIBackend {
             max_completion_tokens: Some(max_tokens),
         };
 
-        let resp = self.http
+        let resp = self
+            .http
             .post("https://api.openai.com/v1/chat/completions")
             .header("Authorization", format!("Bearer {}", self.api_key))
             .json(&oai_request)
-            .send().await
+            .send()
+            .await
             .context("Streaming request to OpenAI API failed")?;
 
         let status = resp.status();
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
-            anyhow::bail!("OpenAI API HTTP {}: {}", status, &body[..body.len().min(400)]);
+            anyhow::bail!(
+                "OpenAI API HTTP {}: {}",
+                status,
+                &body[..body.len().min(400)]
+            );
         }
 
         let mut stream = resp.bytes_stream();
@@ -1164,7 +1478,8 @@ impl OpenAIBackend {
         let mut usage: Option<OpenAIUsage> = None;
 
         // Accumulate tool calls across chunks
-        let mut tool_calls: std::collections::BTreeMap<usize, OpenAIToolCall> = std::collections::BTreeMap::new();
+        let mut tool_calls: std::collections::BTreeMap<usize, OpenAIToolCall> =
+            std::collections::BTreeMap::new();
 
         while let Some(chunk) = stream.next().await {
             let bytes = match chunk {
@@ -1179,9 +1494,13 @@ impl OpenAIBackend {
                     Some(pos) => {
                         let line = line_buf[..pos].trim_end_matches('\r').to_string();
                         line_buf = line_buf[pos + 1..].to_string();
-                        if !line.starts_with("data: ") { continue; }
+                        if !line.starts_with("data: ") {
+                            continue;
+                        }
                         let json_str = &line[6..];
-                        if json_str == "[DONE]" { continue; }
+                        if json_str == "[DONE]" {
+                            continue;
+                        }
 
                         let chunk: OpenAIStreamChunk = match serde_json::from_str(json_str) {
                             Ok(c) => c,
@@ -1202,14 +1521,23 @@ impl OpenAIBackend {
                             }
                             if let Some(ref tcs) = choice.delta.tool_calls {
                                 for tc in tcs {
-                                    let entry = tool_calls.entry(tc.index).or_insert_with(|| OpenAIToolCall {
-                                        index: tc.index,
-                                        id: tc.id.clone(),
-                                        call_type: "function".into(),
-                                        function: OpenAIFunction { name: String::new(), arguments: String::new() },
+                                    let entry = tool_calls.entry(tc.index).or_insert_with(|| {
+                                        OpenAIToolCall {
+                                            index: tc.index,
+                                            id: tc.id.clone(),
+                                            call_type: "function".into(),
+                                            function: OpenAIFunction {
+                                                name: String::new(),
+                                                arguments: String::new(),
+                                            },
+                                        }
                                     });
-                                    if !tc.id.is_empty() { entry.id = tc.id.clone(); }
-                                    if !tc.function.name.is_empty() { entry.function.name.push_str(&tc.function.name); }
+                                    if !tc.id.is_empty() {
+                                        entry.id = tc.id.clone();
+                                    }
+                                    if !tc.function.name.is_empty() {
+                                        entry.function.name.push_str(&tc.function.name);
+                                    }
                                     entry.function.arguments.push_str(&tc.function.arguments);
                                 }
                             }
@@ -1224,10 +1552,14 @@ impl OpenAIBackend {
             parts.push(Part::text(all_text));
         }
         for (_, tc) in tool_calls {
-            let args: serde_json::Value = serde_json::from_str(&tc.function.arguments)
-                .unwrap_or(serde_json::json!({}));
+            let args: serde_json::Value =
+                serde_json::from_str(&tc.function.arguments).unwrap_or(serde_json::json!({}));
             parts.push(Part::FunctionCall {
-                function_call: FunctionCall { name: tc.function.name, args, thought_signature: None },
+                function_call: FunctionCall {
+                    name: tc.function.name,
+                    args,
+                    thought_signature: None,
+                },
                 thought_signature: None,
             });
         }
@@ -1241,7 +1573,10 @@ impl OpenAIBackend {
 
         Ok(GenerateContentResponse {
             candidates: Some(vec![Candidate {
-                content: Some(Content { role: "assistant".into(), parts }),
+                content: Some(Content {
+                    role: "assistant".into(),
+                    parts,
+                }),
                 finish_reason,
             }]),
             usage_metadata: usage_meta,
@@ -1261,8 +1596,8 @@ pub struct OllamaBackend {
 
 impl OllamaBackend {
     pub fn new(model: &str) -> Self {
-        let base_url = std::env::var("OLLAMA_HOST")
-            .unwrap_or_else(|_| "http://localhost:11434".to_string());
+        let base_url =
+            std::env::var("OLLAMA_HOST").unwrap_or_else(|_| "http://localhost:11434".to_string());
         Self {
             http: reqwest::Client::new(),
             model: model.to_string(),
@@ -1270,12 +1605,18 @@ impl OllamaBackend {
         }
     }
 
-    pub async fn generate(&self, request: GenerateContentRequest) -> Result<GenerateContentResponse> {
+    pub async fn generate(
+        &self,
+        request: GenerateContentRequest,
+    ) -> Result<GenerateContentResponse> {
         // Non-streaming fallback — just collects the stream
         let mut text = String::new();
-        let mut on_text = |s: &str| { text.push_str(s); };
+        let mut on_text = |s: &str| {
+            text.push_str(s);
+        };
         let mut on_thought = |_: &str| {};
-        self.generate_streaming(&request, &mut on_text, &mut on_thought).await
+        self.generate_streaming(&request, &mut on_text, &mut on_thought)
+            .await
     }
 
     fn convert_request(&self, request: &GenerateContentRequest) -> serde_json::Value {
@@ -1283,9 +1624,18 @@ impl OllamaBackend {
 
         // System instruction as first message
         if let Some(ref sys) = request.system_instruction {
-            let sys_text: String = sys.parts.iter().filter_map(|p| {
-                if let Part::Text { text, .. } = p { Some(text.as_str()) } else { None }
-            }).collect::<Vec<_>>().join("\n");
+            let sys_text: String = sys
+                .parts
+                .iter()
+                .filter_map(|p| {
+                    if let Part::Text { text, .. } = p {
+                        Some(text.as_str())
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
             if !sys_text.is_empty() {
                 messages.push(serde_json::json!({
                     "role": "system",
@@ -1319,8 +1669,13 @@ impl OllamaBackend {
                         }));
                     }
                     Part::FunctionResponse { function_response } => {
-                        let tc_id = function_response.id.as_deref().unwrap_or(&function_response.name);
-                        let result_text = function_response.response.get("content")
+                        let tc_id = function_response
+                            .id
+                            .as_deref()
+                            .unwrap_or(&function_response.name);
+                        let result_text = function_response
+                            .response
+                            .get("content")
                             .and_then(|v| v.as_str())
                             .unwrap_or("");
                         tool_results.push(serde_json::json!({
@@ -1335,7 +1690,11 @@ impl OllamaBackend {
 
             // Push text message
             if !text_parts.is_empty() || (tool_calls.is_empty() && tool_results.is_empty()) {
-                let text = if text_parts.is_empty() { String::new() } else { text_parts.join("\n") };
+                let text = if text_parts.is_empty() {
+                    String::new()
+                } else {
+                    text_parts.join("\n")
+                };
                 messages.push(serde_json::json!({
                     "role": role,
                     "content": text
@@ -1366,10 +1725,15 @@ impl OllamaBackend {
         // Add tools if present
         let mut openai_tools: Vec<serde_json::Value> = Vec::new();
         for t in &request.tools {
-            if let Some(fds) = t.get("functionDeclarations").and_then(|f: &serde_json::Value| f.as_array()) {
+            if let Some(fds) = t
+                .get("functionDeclarations")
+                .and_then(|f: &serde_json::Value| f.as_array())
+            {
                 for fd in fds {
                     let name = fd.get("name").and_then(|v: &serde_json::Value| v.as_str());
-                    let desc = fd.get("description").and_then(|v: &serde_json::Value| v.as_str());
+                    let desc = fd
+                        .get("description")
+                        .and_then(|v: &serde_json::Value| v.as_str());
                     if let (Some(name), Some(desc)) = (name, desc) {
                         openai_tools.push(serde_json::json!({
                             "type": "function",
@@ -1399,7 +1763,9 @@ impl OllamaBackend {
         let body = self.convert_request(request);
         let url = format!("{}/v1/chat/completions", self.base_url);
 
-        let resp = self.http.post(&url)
+        let resp = self
+            .http
+            .post(&url)
             .json(&body)
             .send()
             .await
@@ -1408,7 +1774,11 @@ impl OllamaBackend {
         let status = resp.status();
         if !status.is_success() {
             let err_body = resp.text().await.unwrap_or_default();
-            anyhow::bail!("Ollama API HTTP {}: {}", status, &err_body[..err_body.len().min(400)]);
+            anyhow::bail!(
+                "Ollama API HTTP {}: {}",
+                status,
+                &err_body[..err_body.len().min(400)]
+            );
         }
 
         let mut stream = resp.bytes_stream();
@@ -1424,7 +1794,9 @@ impl OllamaBackend {
 
             for line in text.lines() {
                 let line = line.trim();
-                if line.is_empty() || line == "data: [DONE]" { continue; }
+                if line.is_empty() || line == "data: [DONE]" {
+                    continue;
+                }
                 let json_str = line.strip_prefix("data: ").unwrap_or(line);
 
                 if let Ok(event) = serde_json::from_str::<serde_json::Value>(json_str) {
@@ -1432,16 +1804,21 @@ impl OllamaBackend {
                         for choice in choices {
                             // Text delta
                             if let Some(delta) = choice.get("delta") {
-                                if let Some(content) = delta.get("content").and_then(|c| c.as_str()) {
+                                if let Some(content) = delta.get("content").and_then(|c| c.as_str())
+                                {
                                     if !content.is_empty() {
                                         on_text(content);
                                         full_text.push_str(content);
                                     }
                                 }
                                 // Tool call delta
-                                if let Some(tc_deltas) = delta.get("tool_calls").and_then(|t| t.as_array()) {
+                                if let Some(tc_deltas) =
+                                    delta.get("tool_calls").and_then(|t| t.as_array())
+                                {
                                     for tc in tc_deltas {
-                                        let idx = tc.get("index").and_then(|i| i.as_u64()).unwrap_or(0) as usize;
+                                        let idx =
+                                            tc.get("index").and_then(|i| i.as_u64()).unwrap_or(0)
+                                                as usize;
                                         while tool_calls_acc.len() <= idx {
                                             tool_calls_acc.push(serde_json::json!({
                                                 "id": "", "type": "function",
@@ -1452,14 +1829,24 @@ impl OllamaBackend {
                                             tool_calls_acc[idx]["id"] = serde_json::json!(id);
                                         }
                                         if let Some(func) = tc.get("function") {
-                                            if let Some(name) = func.get("name").and_then(|n| n.as_str()) {
+                                            if let Some(name) =
+                                                func.get("name").and_then(|n| n.as_str())
+                                            {
                                                 if !name.is_empty() {
-                                                    tool_calls_acc[idx]["function"]["name"] = serde_json::json!(name);
+                                                    tool_calls_acc[idx]["function"]["name"] =
+                                                        serde_json::json!(name);
                                                 }
                                             }
-                                            if let Some(args) = func.get("arguments").and_then(|a| a.as_str()) {
-                                                let current = tool_calls_acc[idx]["function"]["arguments"].as_str().unwrap_or("");
-                                                tool_calls_acc[idx]["function"]["arguments"] = serde_json::json!(format!("{}{}", current, args));
+                                            if let Some(args) =
+                                                func.get("arguments").and_then(|a| a.as_str())
+                                            {
+                                                let current = tool_calls_acc[idx]["function"]
+                                                    ["arguments"]
+                                                    .as_str()
+                                                    .unwrap_or("");
+                                                tool_calls_acc[idx]["function"]["arguments"] = serde_json::json!(
+                                                    format!("{}{}", current, args)
+                                                );
                                             }
                                         }
                                     }
@@ -1472,8 +1859,14 @@ impl OllamaBackend {
                     }
                     // Usage
                     if let Some(usage) = event.get("usage") {
-                        prompt_tokens = usage.get("prompt_tokens").and_then(|t| t.as_u64()).unwrap_or(0) as u32;
-                        completion_tokens = usage.get("completion_tokens").and_then(|t| t.as_u64()).unwrap_or(0) as u32;
+                        prompt_tokens = usage
+                            .get("prompt_tokens")
+                            .and_then(|t| t.as_u64())
+                            .unwrap_or(0) as u32;
+                        completion_tokens = usage
+                            .get("completion_tokens")
+                            .and_then(|t| t.as_u64())
+                            .unwrap_or(0) as u32;
                     }
                 }
             }
@@ -1489,10 +1882,15 @@ impl OllamaBackend {
         for tc in &tool_calls_acc {
             let name = tc["function"]["name"].as_str().unwrap_or("");
             let args_str = tc["function"]["arguments"].as_str().unwrap_or("{}");
-            let args: serde_json::Value = serde_json::from_str(args_str).unwrap_or(serde_json::json!({}));
+            let args: serde_json::Value =
+                serde_json::from_str(args_str).unwrap_or(serde_json::json!({}));
             if !name.is_empty() {
                 parts.push(Part::FunctionCall {
-                    function_call: FunctionCall { name: name.to_string(), args, thought_signature: None },
+                    function_call: FunctionCall {
+                        name: name.to_string(),
+                        args,
+                        thought_signature: None,
+                    },
                     thought_signature: None,
                 });
             }
@@ -1511,7 +1909,10 @@ impl OllamaBackend {
 
         Ok(GenerateContentResponse {
             candidates: Some(vec![Candidate {
-                content: Some(Content { role: "assistant".into(), parts }),
+                content: Some(Content {
+                    role: "assistant".into(),
+                    parts,
+                }),
                 finish_reason,
             }]),
             usage_metadata: usage_meta,

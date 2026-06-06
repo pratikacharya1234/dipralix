@@ -1,5 +1,5 @@
 use colored::Colorize;
-use std::sync::{OnceLock, Mutex};
+use std::sync::{Mutex, OnceLock};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum RiskLevel {
@@ -22,14 +22,12 @@ pub struct SafetyPolicy {
     pub blocked_commands: Vec<String>,
 }
 
-#[derive(Clone, Debug)]
-#[derive(Default)]
+#[derive(Clone, Debug, Default)]
 pub enum RiskLevelOverride {
     #[default]
     Unset,
     Override(RiskLevel),
 }
-
 
 static SAFETY_POLICY: OnceLock<Mutex<SafetyPolicy>> = OnceLock::new();
 
@@ -45,7 +43,9 @@ fn policy() -> &'static Mutex<SafetyPolicy> {
 
 fn load_safety_toml() -> SafetyPolicy {
     let path = std::path::Path::new(".dipralix/safety.toml");
-    let Ok(content) = std::fs::read_to_string(path) else { return SafetyPolicy::default() };
+    let Ok(content) = std::fs::read_to_string(path) else {
+        return SafetyPolicy::default();
+    };
     #[derive(serde::Deserialize)]
     struct Raw {
         permissions: Option<PermissionsRaw>,
@@ -80,20 +80,20 @@ fn load_safety_toml() -> SafetyPolicy {
 
     fn parse_level(s: Option<&str>) -> RiskLevelOverride {
         match s {
-            Some("deny")    => RiskLevelOverride::Override(RiskLevel::Deny),
+            Some("deny") => RiskLevelOverride::Override(RiskLevel::Deny),
             Some("confirm") => RiskLevelOverride::Override(RiskLevel::Confirm),
-            Some("warn")    => RiskLevelOverride::Override(RiskLevel::Warn),
-            Some("allow")   => RiskLevelOverride::Override(RiskLevel::Allow),
-            _                => RiskLevelOverride::Unset,
+            Some("warn") => RiskLevelOverride::Override(RiskLevel::Warn),
+            Some("allow") => RiskLevelOverride::Override(RiskLevel::Allow),
+            _ => RiskLevelOverride::Unset,
         }
     }
 
     if let Some(p) = raw.permissions {
         policy.destructive_commands = parse_level(p.destructive_commands.as_deref());
-        policy.network_commands     = parse_level(p.network_commands.as_deref());
-        policy.git_destructive       = parse_level(p.git_destructive.as_deref());
-        policy.sudo_commands        = parse_level(p.sudo_commands.as_deref());
-        policy.publish_commands     = parse_level(p.publish_commands.as_deref());
+        policy.network_commands = parse_level(p.network_commands.as_deref());
+        policy.git_destructive = parse_level(p.git_destructive.as_deref());
+        policy.sudo_commands = parse_level(p.sudo_commands.as_deref());
+        policy.publish_commands = parse_level(p.publish_commands.as_deref());
     }
 
     if let Some(t) = raw.trusted_commands {
@@ -169,9 +169,7 @@ pub fn classify(cmd: &str) -> RiskLevel {
     {
         let p = policy().lock().unwrap();
         if let RiskLevelOverride::Override(level) = p.destructive_commands {
-            return classify_with_override(c, level, &[
-                "rm -rf", "rm -r ", "rm -fr ",
-            ]);
+            return classify_with_override(c, level, &["rm -rf", "rm -r ", "rm -fr "]);
         }
         if let RiskLevelOverride::Override(level) = p.sudo_commands {
             if c.contains("sudo ") {
@@ -203,19 +201,30 @@ pub fn classify(cmd: &str) -> RiskLevel {
     {
         let p = policy().lock().unwrap();
         if let RiskLevelOverride::Override(level) = p.git_destructive {
-            return classify_with_override(c, level, &[
-                "git reset --hard", "git push --force", "git push -f ", "git clean -f",
-            ]);
+            return classify_with_override(
+                c,
+                level,
+                &[
+                    "git reset --hard",
+                    "git push --force",
+                    "git push -f ",
+                    "git clean -f",
+                ],
+            );
         }
         if let RiskLevelOverride::Override(level) = p.publish_commands {
-            return classify_with_override(c, level, &[
-                "cargo publish", "npm publish", "yarn publish",
-            ]);
+            return classify_with_override(
+                c,
+                level,
+                &["cargo publish", "npm publish", "yarn publish"],
+            );
         }
         if let RiskLevelOverride::Override(level) = p.network_commands {
-            return classify_with_override(c, level, &[
-                "curl ", "wget ", "npm install", "pip install",
-            ]);
+            return classify_with_override(
+                c,
+                level,
+                &["curl ", "wget ", "npm install", "pip install"],
+            );
         }
     }
 
@@ -273,7 +282,10 @@ pub fn check_bash(cmd: &str) -> bool {
         }
         RiskLevel::Confirm => {
             println!();
-            println!("  {} Potentially destructive command:", "[WARN]".yellow().bold());
+            println!(
+                "  {} Potentially destructive command:",
+                "[WARN]".yellow().bold()
+            );
             println!("  {}  {}", "│".dimmed(), cmd.yellow());
             prompt_yn()
         }

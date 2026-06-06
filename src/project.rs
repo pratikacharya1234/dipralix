@@ -13,17 +13,22 @@ pub struct LoadedProject {
 
 // Extensions always skipped (binary / generated)
 const SKIP_EXTS: &[&str] = &[
-    "png", "jpg", "jpeg", "gif", "ico", "svg", "webp", "pdf",
-    "zip", "tar", "gz", "bz2", "xz", "7z",
-    "exe", "bin", "so", "dll", "dylib", "wasm",
-    "lock", "sum",
-    "min.js", "min.css",
+    "png", "jpg", "jpeg", "gif", "ico", "svg", "webp", "pdf", "zip", "tar", "gz", "bz2", "xz",
+    "7z", "exe", "bin", "so", "dll", "dylib", "wasm", "lock", "sum", "min.js", "min.css",
 ];
 
 // Directory names always skipped
 const SKIP_DIRS: &[&str] = &[
-    "target", "node_modules", ".git", "__pycache__", ".next",
-    "dist", "build", ".cache", "vendor", "coverage",
+    "target",
+    "node_modules",
+    ".git",
+    "__pycache__",
+    ".next",
+    "dist",
+    "build",
+    ".cache",
+    "vendor",
+    "coverage",
 ];
 
 /// Load all readable source files under `root` into a single context block.
@@ -52,12 +57,16 @@ pub fn load_project(root: &str, max_chars: Option<usize>) -> Result<LoadedProjec
         let path_str = path.to_string_lossy();
 
         // Skip noisy directories
-        if SKIP_DIRS.iter().any(|d| path_str.contains(&format!("/{}/", d))) {
+        if SKIP_DIRS
+            .iter()
+            .any(|d| path_str.contains(&format!("/{}/", d)))
+        {
             continue;
         }
 
         // Skip binary extensions
-        let ext = path.extension()
+        let ext = path
+            .extension()
             .and_then(|e| e.to_str())
             .unwrap_or("")
             .to_lowercase();
@@ -73,8 +82,12 @@ pub fn load_project(root: &str, max_chars: Option<usize>) -> Result<LoadedProjec
             }
         }
 
-        let Ok(content) = std::fs::read_to_string(path) else { continue };
-        if content.is_empty() { continue; }
+        let Ok(content) = std::fs::read_to_string(path) else {
+            continue;
+        };
+        if content.is_empty() {
+            continue;
+        }
 
         let relative = pathdiff(root, &path_str);
         total_chars += content.len();
@@ -116,7 +129,9 @@ pub fn load_project(root: &str, max_chars: Option<usize>) -> Result<LoadedProjec
 pub async fn clone_and_load(url: &str) -> Result<LoadedProject> {
     let tmp = std::env::temp_dir().join(format!(
         "forge-learn-{}",
-        url.rsplit('/').next().unwrap_or("repo")
+        url.rsplit('/')
+            .next()
+            .unwrap_or("repo")
             .trim_end_matches(".git")
     ));
 

@@ -164,42 +164,43 @@ impl McpServerInner {
         // Read until we get the matching response id
         let mut line_buf = String::new();
 
-        let inner: Result<T, anyhow::Error> = tokio::time::timeout(std::time::Duration::from_secs(60), async {
-            loop {
-                line_buf.clear();
-                let n = self.reader.read_line(&mut line_buf).await?;
-                if n == 0 {
-                    anyhow::bail!("MCP server closed connection");
+        let inner: Result<T, anyhow::Error> =
+            tokio::time::timeout(std::time::Duration::from_secs(60), async {
+                loop {
+                    line_buf.clear();
+                    let n = self.reader.read_line(&mut line_buf).await?;
+                    if n == 0 {
+                        anyhow::bail!("MCP server closed connection");
+                    }
+
+                    let trimmed = line_buf.trim();
+                    if trimmed.is_empty() {
+                        continue;
+                    }
+
+                    let resp: RpcResponse = match serde_json::from_str(trimmed) {
+                        Ok(r) => r,
+                        Err(_) => continue,
+                    };
+
+                    if resp.id != id {
+                        continue;
+                    }
+
+                    if let Some(err) = resp.error {
+                        anyhow::bail!("MCP error {}: {}", err.code, err.message);
+                    }
+
+                    let value = resp
+                        .result
+                        .ok_or_else(|| anyhow::anyhow!("MCP response missing result field"))?;
+
+                    let parsed: T = serde_json::from_value(value)?;
+                    break Ok::<_, anyhow::Error>(parsed);
                 }
-
-                let trimmed = line_buf.trim();
-                if trimmed.is_empty() {
-                    continue;
-                }
-
-                let resp: RpcResponse = match serde_json::from_str(trimmed) {
-                    Ok(r) => r,
-                    Err(_) => continue,
-                };
-
-                if resp.id != id {
-                    continue;
-                }
-
-                if let Some(err) = resp.error {
-                    anyhow::bail!("MCP error {}: {}", err.code, err.message);
-                }
-
-                let value = resp
-                    .result
-                    .ok_or_else(|| anyhow::anyhow!("MCP response missing result field"))?;
-
-                let parsed: T = serde_json::from_value(value)?;
-                break Ok::<_, anyhow::Error>(parsed);
-            }
-        })
-        .await
-        .context("MCP response timeout")?;
+            })
+            .await
+            .context("MCP response timeout")?;
 
         inner
     }
@@ -266,11 +267,13 @@ impl McpServer {
             .with_context(|| format!("MCP initialize handshake failed for '{}'", name))?;
 
         // Ensure the server supports tools
-        if init_result.capabilities.get("tools").and_then(|t| t.as_object()).is_none() {
-            eprintln!(
-                "  ~ MCP server '{}' has no tools capability",
-                name
-            );
+        if init_result
+            .capabilities
+            .get("tools")
+            .and_then(|t| t.as_object())
+            .is_none()
+        {
+            eprintln!("  ~ MCP server '{}' has no tools capability", name);
         }
 
         // List tools
@@ -453,9 +456,7 @@ impl McpRegistry {
                 if obj.contains_key("properties") {
                     // Standard JSON Schema — wrap if needed
                     let mut wrapped = obj.clone();
-                    let required = wrapped
-                        .remove("required")
-                        .unwrap_or(serde_json::json!([]));
+                    let required = wrapped.remove("required").unwrap_or(serde_json::json!([]));
                     let properties = wrapped
                         .remove("properties")
                         .unwrap_or(serde_json::json!({}));
@@ -502,12 +503,7 @@ impl McpRegistry {
     ) -> ToolResult {
         let (idx, _decl) = match self.tool_map.get(prefixed_name) {
             Some(v) => v,
-            None => {
-                return ToolResult::err(format!(
-                    "MCP tool not found: {}",
-                    prefixed_name
-                ))
-            }
+            None => return ToolResult::err(format!("MCP tool not found: {}", prefixed_name)),
         };
 
         let server = &self.servers[*idx];

@@ -1,28 +1,35 @@
 use anyhow::Result;
 use clap::Parser;
 
+use dipralix::sync;
+
 mod agent;
 mod approval;
 mod ast;
 mod audit;
 mod backend;
 mod browser;
+mod ci_runner;
 mod comment_protocol;
 mod config;
 mod context;
 mod debate;
 mod diff_view;
+mod domain_bootstrap;
+mod domain_knowledge;
+#[cfg(feature = "ember")]
+mod ember;
 mod fingerprint;
 mod infra;
+mod integrations;
 mod learning;
 mod living_docs;
-mod memory;
-mod plan_visualizer;
-mod types;
-mod integrations;
 mod mcp;
+mod memory;
 mod models;
 mod orchestrator;
+mod packer;
+mod plan_visualizer;
 mod project;
 mod safety;
 mod security;
@@ -30,15 +37,10 @@ mod session;
 mod snapshot;
 mod token_counter;
 mod tools;
+mod types;
 mod ui;
-mod packer;
-mod ci_runner;
-mod domain_knowledge;
-mod domain_bootstrap;
 #[cfg(feature = "ember")]
 mod voice;
-#[cfg(feature = "ember")]
-mod ember;
 
 #[cfg(test)]
 mod test_harness;
@@ -134,6 +136,31 @@ struct Args {
     /// Show project fingerprint and quality score, then exit.
     #[clap(long)]
     fingerprint: bool,
+
+    /// Realtime sync: join a room and stream `.dipralix/` changes.
+    /// See `dipralix-realtime.md` §10 Phase 1.
+    #[clap(long)]
+    sync: bool,
+
+    /// (realtime) WebSocket URL of the sync server, e.g. `ws://host:7878`.
+    #[clap(long, requires = "sync")]
+    server: Option<String>,
+
+    /// (realtime) JWT bearer token for the room.
+    #[clap(long, requires = "sync")]
+    token: Option<String>,
+
+    /// (realtime) Room (project) name to join.
+    #[clap(long, requires = "sync")]
+    room: Option<String>,
+
+    /// (realtime) Identity advertised to other clients.
+    #[clap(long, requires = "sync")]
+    user: Option<String>,
+
+    /// (realtime) Project root; the watcher scopes to `<root>/.dipralix/`.
+    #[clap(long, requires = "sync")]
+    project_root: Option<String>,
 }
 
 #[tokio::main]
@@ -149,6 +176,9 @@ async fn main() -> Result<()> {
         fingerprint::run_fingerprint();
         return Ok(());
     }
+    if args.sync {
+        return run_realtime(&args).await;
+    }
     if let Some(ref output) = args.pack {
         let msg = packer::pack_project(Some(output))?;
         println!("  ⊞ {}", msg);
@@ -162,20 +192,19 @@ async fn main() -> Result<()> {
         || args.openai_api_key.is_some()
         || file_cfg.anthropic_api_key.is_some()
         || file_cfg.openai_api_key.is_some()
-        || std::env::var("ANTHROPIC_API_KEY").ok().is_some_and(|k| !k.is_empty())
-        || std::env::var("OPENAI_API_KEY").ok().is_some_and(|k| !k.is_empty());
+        || std::env::var("ANTHROPIC_API_KEY")
+            .ok()
+            .is_some_and(|k| !k.is_empty())
+        || std::env::var("OPENAI_API_KEY")
+            .ok()
+            .is_some_and(|k| !k.is_empty());
 
-    let api_key = args.api_key
+    let api_key = args
+        .api_key
         .or(file_cfg.api_key)
         .or_else(|| std::env::var("DIPRALIX_API_KEY").ok())
         .or_else(|| std::env::var("GEMINI_API_KEY").ok())
-        .unwrap_or_else(|| {
-            if has_alt_key {
-                String::new() // OK — user will switch model before using Gemini
-            } else {
-                String::new() // Will fail on first Gemini API call
-            }
-        });
+        .unwrap_or_default();
 
     if api_key.is_empty() && !has_alt_key {
         anyhow::bail!(
@@ -191,7 +220,9 @@ async fn main() -> Result<()> {
     //      for each task (complex → reasoning model, simple → fast model). This
     //      replaces the old "fetch best model from first provider" heuristic, which
     //      hardcoded specific model names that drift out of date.
-    let model = args.model.clone()
+    let model = args
+        .model
+        .clone()
         .or(file_cfg.model.clone())
         .unwrap_or_else(|| "auto".to_string());
 
@@ -200,28 +231,40 @@ async fn main() -> Result<()> {
     }
 
     let thinking = args.think || file_cfg.thinking;
-    let budget   = if args.think { args.think_budget } else { file_cfg.thinking_budget };
-    let auto_apply    = args.auto_apply  || file_cfg.auto_apply;
-    let max_iterations = if args.max_iter != 50 { args.max_iter } else { file_cfg.max_iterations };
+    let budget = if args.think {
+        args.think_budget
+    } else {
+        file_cfg.thinking_budget
+    };
+    let auto_apply = args.auto_apply || file_cfg.auto_apply;
+    let max_iterations = if args.max_iter != 50 {
+        args.max_iter
+    } else {
+        file_cfg.max_iterations
+    };
 
     let config = config::Config {
         api_key,
         model,
-        grounding:       args.grounding || file_cfg.grounding,
+        grounding: args.grounding || file_cfg.grounding,
         thinking,
         thinking_budget: budget,
         auto_apply,
-        max_iterations:  if max_iterations == 0 { 0 } else { max_iterations.max(1) },
-        context_warn:    file_cfg.context_warn,
+        max_iterations: if max_iterations == 0 {
+            0
+        } else {
+            max_iterations.max(1)
+        },
+        context_warn: file_cfg.context_warn,
         context_compact: file_cfg.context_compact,
-        mcp_servers:     file_cfg.mcp_servers,
-        integrations:    file_cfg.integrations,
+        mcp_servers: file_cfg.mcp_servers,
+        integrations: file_cfg.integrations,
         daily_budget_usd: file_cfg.daily_budget_usd,
         anthropic_api_key: args.anthropic_api_key.or(file_cfg.anthropic_api_key),
         openai_api_key: args.openai_api_key.or(file_cfg.openai_api_key),
         explain_before_execute: args.explain || file_cfg.explain_before_execute,
         api_base: args.api_base,
-            domain: args.domain,
+        domain: args.domain,
     };
 
     // ▸ EMBER / Voice — under development for v0.0.3
@@ -243,10 +286,15 @@ async fn main() -> Result<()> {
 
     // CI headless mode — run prompt, output JSON, exit
     if args.ci {
-        let prompt = args.prompt.as_deref().unwrap_or("Fix any issues in this project");
+        let prompt = args
+            .prompt
+            .as_deref()
+            .unwrap_or("Fix any issues in this project");
         let result = ci_runner::run_ci(&config, prompt).await?;
         println!("{}", serde_json::to_string_pretty(&result)?);
-        if !result.success { std::process::exit(1); }
+        if !result.success {
+            std::process::exit(1);
+        }
         return Ok(());
     }
 
@@ -272,4 +320,48 @@ async fn main() -> Result<()> {
     */
 
     Ok(())
+}
+
+/// Dispatch the realtime sync subcommand. Requires `--sync` plus
+/// `--server` and `--token`; falls back to `args.room = "default"` if
+/// not specified.
+async fn run_realtime(args: &Args) -> Result<()> {
+    init_sync_tracing();
+    let server = args
+        .server
+        .clone()
+        .ok_or_else(|| anyhow::anyhow!("--sync requires --server <ws-url>"))?;
+    let token = args
+        .token
+        .clone()
+        .ok_or_else(|| anyhow::anyhow!("--sync requires --token <jwt>"))?;
+    let room = args.room.clone().unwrap_or_else(|| "default".to_string());
+    let user = args
+        .user
+        .clone()
+        .unwrap_or_else(|| std::env::var("USER").unwrap_or_else(|_| "anon".to_string()));
+    let project_root =
+        std::path::PathBuf::from(args.project_root.clone().unwrap_or_else(|| ".".to_string()));
+
+    let cfg = sync::ClientConfig {
+        server,
+        token,
+        room,
+        user,
+        project_root,
+    };
+    let client = sync::SyncClient::new(cfg);
+    client.run().await.map_err(Into::into)
+}
+
+/// Initialize structured tracing for the sync client side, mirroring
+/// the server binary's behavior.
+fn init_sync_tracing() {
+    use tracing_subscriber::EnvFilter;
+    let filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new("info,dipralix::sync=debug"));
+    let _ = tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .with_target(false)
+        .try_init();
 }

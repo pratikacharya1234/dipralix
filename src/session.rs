@@ -55,9 +55,7 @@ fn serialize_history(history: &[Content]) -> Vec<SerializedContent> {
                 .parts
                 .iter()
                 .map(|p| match p {
-                    Part::Text { text, .. } => SerializedPart::Text {
-                        text: text.clone(),
-                    },
+                    Part::Text { text, .. } => SerializedPart::Text { text: text.clone() },
                     Part::FunctionCall { function_call, .. } => SerializedPart::FunctionCall {
                         name: function_call.name.clone(),
                         args: function_call.args.to_string(),
@@ -66,10 +64,7 @@ fn serialize_history(history: &[Content]) -> Vec<SerializedContent> {
                         SerializedPart::FunctionResponse {
                             name: function_response.name.clone(),
                             response: function_response.response.to_string(),
-                            is_error: function_response
-                                .response
-                                .get("error")
-                                .is_some(),
+                            is_error: function_response.response.get("error").is_some(),
                         }
                     }
                     _ => SerializedPart::Text {
@@ -203,14 +198,8 @@ pub fn list_sessions() -> Vec<SessionInfo> {
                 if let Ok(content) = std::fs::read_to_string(&path) {
                     info.size_bytes = content.len();
                     if let Ok(session) = serde_json::from_str::<serde_json::Value>(&content) {
-                        info.created = session["created"]
-                            .as_str()
-                            .unwrap_or("?")
-                            .to_string();
-                        info.turns = session["history"]
-                            .as_array()
-                            .map(|a| a.len())
-                            .unwrap_or(0);
+                        info.created = session["created"].as_str().unwrap_or("?").to_string();
+                        info.turns = session["history"].as_array().map(|a| a.len()).unwrap_or(0);
                     }
                 }
 

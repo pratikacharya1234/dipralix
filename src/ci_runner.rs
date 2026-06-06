@@ -37,23 +37,23 @@ pub async fn run_pipeline(config: &Config, name: &str) -> Result<()> {
     }
 
     let content = std::fs::read_to_string(&path)?;
-    let pipeline: toml::Value = toml::from_str(&content)
-        .context("Invalid pipeline TOML")?;
+    let pipeline: toml::Value = toml::from_str(&content).context("Invalid pipeline TOML")?;
 
-    let steps = pipeline.get("steps")
+    let steps = pipeline
+        .get("steps")
         .and_then(|s| s.as_array())
         .context("Pipeline must have a [[steps]] array")?;
 
-
     for (i, step) in steps.iter().enumerate() {
-        let task = step.get("task")
-            .and_then(|t| t.as_str())
-            .unwrap_or("");
-        let desc = step.get("description")
+        let task = step.get("task").and_then(|t| t.as_str()).unwrap_or("");
+        let desc = step
+            .get("description")
             .and_then(|d| d.as_str())
             .unwrap_or("");
 
-        if task.is_empty() { continue; }
+        if task.is_empty() {
+            continue;
+        }
 
         println!(
             "\n  {} Pipeline step {}/{}: {}",
@@ -66,6 +66,11 @@ pub async fn run_pipeline(config: &Config, name: &str) -> Result<()> {
         agent::run_once(config, task, None).await?;
     }
 
-    println!("\n  {} Pipeline '{}' complete — {} steps executed.", "[OK]".green(), name, steps.len());
+    println!(
+        "\n  {} Pipeline '{}' complete — {} steps executed.",
+        "[OK]".green(),
+        name,
+        steps.len()
+    );
     Ok(())
 }

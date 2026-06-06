@@ -3,37 +3,66 @@
 /// Tests cover: provider detection, type conversion, safety classification,
 /// context windows, token counting, dependency ordering, and backend
 /// response parsing — all without requiring API keys.
-
 #[cfg(test)]
 mod provider_tests {
     use crate::backend;
 
     #[test]
     fn detect_gemini_models() {
-        assert_eq!(backend::detect_provider("gemini-2.5-pro"), backend::Provider::Gemini);
-        assert_eq!(backend::detect_provider("gemini-2.5-flash"), backend::Provider::Gemini);
-        assert_eq!(backend::detect_provider("gemini-2.0-flash-lite"), backend::Provider::Gemini);
+        assert_eq!(
+            backend::detect_provider("gemini-2.5-pro"),
+            backend::Provider::Gemini
+        );
+        assert_eq!(
+            backend::detect_provider("gemini-2.5-flash"),
+            backend::Provider::Gemini
+        );
+        assert_eq!(
+            backend::detect_provider("gemini-2.0-flash-lite"),
+            backend::Provider::Gemini
+        );
     }
 
     #[test]
     fn detect_claude_models() {
-        assert_eq!(backend::detect_provider("claude-4-opus"), backend::Provider::Anthropic);
-        assert_eq!(backend::detect_provider("claude-4-sonnet"), backend::Provider::Anthropic);
-        assert_eq!(backend::detect_provider("claude-3.5-sonnet"), backend::Provider::Anthropic);
+        assert_eq!(
+            backend::detect_provider("claude-4-opus"),
+            backend::Provider::Anthropic
+        );
+        assert_eq!(
+            backend::detect_provider("claude-4-sonnet"),
+            backend::Provider::Anthropic
+        );
+        assert_eq!(
+            backend::detect_provider("claude-3.5-sonnet"),
+            backend::Provider::Anthropic
+        );
     }
 
     #[test]
     fn detect_openai_models() {
-        assert_eq!(backend::detect_provider("gpt-4.1"), backend::Provider::OpenAI);
-        assert_eq!(backend::detect_provider("gpt-4o"), backend::Provider::OpenAI);
+        assert_eq!(
+            backend::detect_provider("gpt-4.1"),
+            backend::Provider::OpenAI
+        );
+        assert_eq!(
+            backend::detect_provider("gpt-4o"),
+            backend::Provider::OpenAI
+        );
         assert_eq!(backend::detect_provider("o3"), backend::Provider::OpenAI);
-        assert_eq!(backend::detect_provider("o4-mini"), backend::Provider::OpenAI);
+        assert_eq!(
+            backend::detect_provider("o4-mini"),
+            backend::Provider::OpenAI
+        );
     }
 
     #[test]
     fn default_provider_is_gemini() {
         // Unknown models default to Gemini
-        assert_eq!(backend::detect_provider("some-random-model"), backend::Provider::Gemini);
+        assert_eq!(
+            backend::detect_provider("some-random-model"),
+            backend::Provider::Gemini
+        );
         assert_eq!(backend::detect_provider(""), backend::Provider::Gemini);
     }
 }
@@ -73,15 +102,20 @@ mod safety_tests {
     fn safe_commands_are_allow() {
         assert_eq!(safety::classify("cargo check"), safety::RiskLevel::Allow);
         assert_eq!(safety::classify("ls -la"), safety::RiskLevel::Allow);
-        assert_eq!(safety::classify("grep -r pattern ."), safety::RiskLevel::Allow);
+        assert_eq!(
+            safety::classify("grep -r pattern ."),
+            safety::RiskLevel::Allow
+        );
     }
 
     #[test]
     fn known_safe_commands_are_not_denied() {
         // Curl with URL should not be denied (may be WARN or CONFIRM depending on flags)
         let curl_result = safety::classify("curl https://example.com");
-        assert!(!matches!(curl_result, safety::RiskLevel::Deny),
-            "curl should not be denied");
+        assert!(
+            !matches!(curl_result, safety::RiskLevel::Deny),
+            "curl should not be denied"
+        );
     }
 
     #[test]
@@ -361,7 +395,10 @@ mod integration_count_tests {
         // 15 file/exec tools (read, write, append, edit, bash, list_files, list_symbols,
         // search, glob, mkdir, delete, move, copy, url_fetch, git_snapshot)
         // + 2 memory tools (memorize_decision, memorize_pattern)
-        assert_eq!(count, 17, "Expected 17 core tools — update this test when adding/removing tools in tools.rs");
+        assert_eq!(
+            count, 17,
+            "Expected 17 core tools — update this test when adding/removing tools in tools.rs"
+        );
     }
 
     #[test]
@@ -370,7 +407,11 @@ mod integration_count_tests {
         assert!(!decls.is_empty());
         for decl in &decls {
             assert!(!decl.name.is_empty(), "Tool declaration missing name");
-            assert!(!decl.description.is_empty(), "Tool '{}' missing description", decl.name);
+            assert!(
+                !decl.description.is_empty(),
+                "Tool '{}' missing description",
+                decl.name
+            );
         }
     }
 }

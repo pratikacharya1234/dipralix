@@ -30,12 +30,7 @@ pub struct DiffReview {
 ///   r = reject this hunk
 ///   A = accept all remaining hunks
 ///   q = reject all remaining, abort the entire change
-pub fn show_and_confirm_hunks(
-    path: &str,
-    old: &str,
-    new: &str,
-    auto_apply: bool,
-) -> DiffReview {
+pub fn show_and_confirm_hunks(path: &str, old: &str, new: &str, auto_apply: bool) -> DiffReview {
     if old == new {
         return DiffReview {
             accepted_hunks: 0,
@@ -60,7 +55,10 @@ pub fn show_and_confirm_hunks(
     }
 
     let total_hunks = hunks.len();
-    let total_changes = diff.iter_all_changes().filter(|c| c.tag() != ChangeTag::Equal).count();
+    let total_changes = diff
+        .iter_all_changes()
+        .filter(|c| c.tag() != ChangeTag::Equal)
+        .count();
 
     println!();
     println!(
@@ -100,11 +98,7 @@ pub fn show_and_confirm_hunks(
         for op in group {
             for change in diff.iter_changes(op) {
                 if lines_shown >= MAX_LINES {
-                    println!(
-                        "  {}  {}",
-                        "|".bright_black(),
-                        "... truncated ...".dimmed()
-                    );
+                    println!("  {}  {}", "|".bright_black(), "... truncated ...".dimmed());
                     break;
                 }
                 let line = change.value().trim_end_matches('\n');
@@ -118,7 +112,11 @@ pub fn show_and_confirm_hunks(
                         println!("  {} {}", "|".bright_black(), format!("+ {}", line).green());
                     }
                     ChangeTag::Equal => {
-                        println!("  {} {}", "|".bright_black(), format!("  {}", line).dimmed());
+                        println!(
+                            "  {} {}",
+                            "|".bright_black(),
+                            format!("  {}", line).dimmed()
+                        );
                     }
                 }
                 lines_shown += 1;
@@ -268,7 +266,11 @@ pub fn show_and_confirm(path: &str, old: &str, new: &str, auto_apply: bool) -> b
                         println!("  {} {}", "|".bright_black(), format!("+ {}", line).green());
                     }
                     ChangeTag::Equal => {
-                        println!("  {} {}", "|".bright_black(), format!("  {}", line).dimmed());
+                        println!(
+                            "  {} {}",
+                            "|".bright_black(),
+                            format!("  {}", line).dimmed()
+                        );
                     }
                 }
                 shown += 1;

@@ -1,7 +1,7 @@
 use std::sync::{Mutex, OnceLock};
 
 struct Entry {
-    path:        String,
+    path: String,
     old_content: Option<String>, // None = file did not exist (was created)
     description: String,
 }
@@ -17,7 +17,7 @@ fn store() -> &'static Mutex<Vec<Entry>> {
 pub fn capture(path: &str, description: &str) {
     let old = std::fs::read_to_string(path).ok(); // None if file doesn't exist yet
     store().lock().unwrap().push(Entry {
-        path:        path.to_string(),
+        path: path.to_string(),
         old_content: old,
         description: description.to_string(),
     });

@@ -16,13 +16,17 @@ use std::io::{self, Write};
 // ANSI primitives
 // ══════════════════════════════════════════════════════════════════════════════
 
-pub const RESET:  &str = "\x1b[0m";
-pub const BOLD:   &str = "\x1b[1m";
-pub const DIM:    &str = "\x1b[2m";
-const CLRLN:      &str = "\x1b[2K"; // erase entire current line
+pub const RESET: &str = "\x1b[0m";
+pub const BOLD: &str = "\x1b[1m";
+pub const DIM: &str = "\x1b[2m";
+const CLRLN: &str = "\x1b[2K"; // erase entire current line
 
-fn cursor_up(n: usize) -> String   { format!("\x1b[{}A", n) }
-fn cursor_col_1() -> &'static str  { "\x1b[1G" } // move to col 1
+fn cursor_up(n: usize) -> String {
+    format!("\x1b[{}A", n)
+}
+fn cursor_col_1() -> &'static str {
+    "\x1b[1G"
+} // move to col 1
 
 // ══════════════════════════════════════════════════════════════════════════════
 // NULLVOID Palette (RGB true-color foreground)
@@ -39,39 +43,39 @@ fn cursor_col_1() -> &'static str  { "\x1b[1G" } // move to col 1
 // ◈ Spectral Ghost #141C38  → the phantom echo behind the logo
 // ──────────────────────────────────────────────────────────────────────────────
 
-pub const MINT:   &str = "\x1b[38;2;61;255;154m";
-pub const FIRE:   &str = "\x1b[38;2;255;92;26m";
+pub const MINT: &str = "\x1b[38;2;61;255;154m";
+pub const FIRE: &str = "\x1b[38;2;255;92;26m";
 pub const PLASMA: &str = "\x1b[38;2;0;212;255m";
 pub const VIOLET: &str = "\x1b[38;2;123;81;255m";
-pub const AMBER:  &str = "\x1b[38;2;255;184;108m";
+pub const AMBER: &str = "\x1b[38;2;255;184;108m";
 pub const BRIGHT: &str = "\x1b[38;2;205;214;244m";
-pub const TEXT:   &str = "\x1b[38;2;136;146;176m";
-pub const MUTED:  &str = "\x1b[38;2;58;64;96m";
-pub const GHOST:  &str = "\x1b[38;2;18;24;52m";
+pub const TEXT: &str = "\x1b[38;2;136;146;176m";
+pub const MUTED: &str = "\x1b[38;2;58;64;96m";
+pub const GHOST: &str = "\x1b[38;2;18;24;52m";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // NULLVOID Icon Set (Unicode, never emoji)
 // ══════════════════════════════════════════════════════════════════════════════
 
-pub const I_MARK:   &str = "◈";  // dipralix mark / status
-pub const I_TARGET: &str = "⌖";  // crosshair / analysis / secure
-pub const I_PROC:   &str = "⎔";  // processor / settings
-pub const I_GRID:   &str = "⊞";  // files / context grid
-pub const I_BRANCH: &str = "⟟";  // git branch / path
-pub const I_PROMPT: &str = "⊢";  // logical turnstile / prompt arrow
-pub const I_OUT:    &str = "◆";  // output diamond / reasoning
-pub const I_STREAM: &str = "∷";  // data stream / proportional
-pub const I_WARN:   &str = "⌬";  // delta / warning / change
-pub const I_ACTIVE: &str = "⊛";  // active / starred
-pub const I_ERROR:  &str = "⊗";  // error / tensor product
-pub const I_ADD:    &str = "⊕";  // addition / ok / loaded
-pub const I_LIVE:   &str = "◉";  // live / filled circle
-const I_HALF:   &str = "◐";  // half circle (thinking)
-const I_HALF2:  &str = "◓";  // spinner frame 2
-const I_HALF3:  &str = "◑";  // spinner frame 3
-const I_HALF4:  &str = "◒";  // spinner frame 4
-const I_RULE:   &str = "─";  // thin rule segment
-const I_DOT:    &str = "·";  // faint separator dot
+pub const I_MARK: &str = "◈"; // dipralix mark / status
+pub const I_TARGET: &str = "⌖"; // crosshair / analysis / secure
+pub const I_PROC: &str = "⎔"; // processor / settings
+pub const I_GRID: &str = "⊞"; // files / context grid
+pub const I_BRANCH: &str = "⟟"; // git branch / path
+pub const I_PROMPT: &str = "⊢"; // logical turnstile / prompt arrow
+pub const I_OUT: &str = "◆"; // output diamond / reasoning
+pub const I_STREAM: &str = "∷"; // data stream / proportional
+pub const I_WARN: &str = "⌬"; // delta / warning / change
+pub const I_ACTIVE: &str = "⊛"; // active / starred
+pub const I_ERROR: &str = "⊗"; // error / tensor product
+pub const I_ADD: &str = "⊕"; // addition / ok / loaded
+pub const I_LIVE: &str = "◉"; // live / filled circle
+const I_HALF: &str = "◐"; // half circle (thinking)
+const I_HALF2: &str = "◓"; // spinner frame 2
+const I_HALF3: &str = "◑"; // spinner frame 3
+const I_HALF4: &str = "◒"; // spinner frame 4
+const I_RULE: &str = "─"; // thin rule segment
+const I_DOT: &str = "·"; // faint separator dot
 
 /// Spinner frames for reasoning animation
 pub const SPINNER: [&str; 4] = [I_HALF, I_HALF2, I_HALF3, I_HALF4];
@@ -101,46 +105,46 @@ type Segment = (&'static str, &'static str); // (ansi_color, text)
 fn dipralix_lines() -> [[Segment; 5]; 6] {
     [
         [
-            (FIRE,   "██████╗ "),
+            (FIRE, "██████╗ "),
             (PLASMA, " ██╗ "),
             (BRIGHT, "██████╗ "),
             (VIOLET, "██████╗ "),
-            (MINT,   " █████╗ "),
+            (MINT, " █████╗ "),
         ],
         [
-            (FIRE,   "██╔══██╗"),
+            (FIRE, "██╔══██╗"),
             (PLASMA, " ██║ "),
             (BRIGHT, "██╔══██╗"),
             (VIOLET, "██╔══██╗"),
-            (MINT,   "██╔══██╗"),
+            (MINT, "██╔══██╗"),
         ],
         [
-            (FIRE,   "██║  ██║"),
+            (FIRE, "██║  ██║"),
             (PLASMA, " ██║ "),
             (BRIGHT, "██████╔╝"),
             (VIOLET, "██████╔╝"),
-            (MINT,   "███████║"),
+            (MINT, "███████║"),
         ],
         [
-            (FIRE,   "██║  ██║"),
+            (FIRE, "██║  ██║"),
             (PLASMA, " ██║ "),
             (BRIGHT, "██╔═══╝ "),
             (VIOLET, "██╔══██╗"),
-            (MINT,   "██╔══██║"),
+            (MINT, "██╔══██║"),
         ],
         [
-            (FIRE,   "██████╔╝"),
+            (FIRE, "██████╔╝"),
             (PLASMA, " ██║ "),
             (BRIGHT, "██║     "),
             (VIOLET, "██║  ██║"),
-            (MINT,   "██║  ██║"),
+            (MINT, "██║  ██║"),
         ],
         [
-            (FIRE,   "╚═════╝ "),
+            (FIRE, "╚═════╝ "),
             (PLASMA, " ╚═╝ "),
             (BRIGHT, "╚═╝     "),
             (VIOLET, "╚═╝  ╚═╝"),
-            (MINT,   "╚═╝  ╚═╝"),
+            (MINT, "╚═╝  ╚═╝"),
         ],
     ]
 }
@@ -186,9 +190,9 @@ pub fn print_banner() {
         .ok()
         .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
         .unwrap_or_else(|| "dipralix-cli".into());
-    let pid    = std::process::id();
-    let arch   = std::env::consts::ARCH;
-    let os     = std::env::consts::OS;
+    let pid = std::process::id();
+    let arch = std::env::consts::ARCH;
+    let os = std::env::consts::OS;
     let target = format!("{}-unknown-{}-gnu", arch, os);
 
     writeln!(w).unwrap();
@@ -197,7 +201,8 @@ pub fn print_banner() {
         " {TEXT}NULLVOID::PROTOCOL {MUTED}# {TEXT}{bin} \
          {MUTED}{I_DOT} {TEXT}pid:{pid} \
          {MUTED}{I_DOT} {TEXT}{target}{RESET}"
-    ).unwrap();
+    )
+    .unwrap();
     thin_rule(&mut w);
 
     // ── DIPRALIX logo (ghost + overlay) ─────────────────────────────────────────
@@ -215,7 +220,8 @@ pub fn print_banner() {
          {PLASMA}{I_GRID} 1M Context{RESET}  {MUTED}|{RESET} \
          {VIOLET}{I_TARGET} Multi-Model{RESET}  {MUTED}|{RESET} \
          {AMBER}{I_BRANCH} .dipralix/project.md{RESET}"
-    ).unwrap();
+    )
+    .unwrap();
     thin_rule(&mut w);
 
     // ── Command hints ─────────────────────────────────────────────────────────
@@ -225,7 +231,8 @@ pub fn print_banner() {
          {TEXT}/web {MUTED}{I_DOT} {TEXT}/model {MUTED}{I_DOT} {TEXT}/task {MUTED}{I_DOT} \
          {TEXT}/undo {MUTED}{I_DOT} {TEXT}/compact {MUTED}{I_DOT} {TEXT}/session {MUTED}{I_DOT} \
          {TEXT}/security {MUTED}{I_DOT} {TEXT}/quit{RESET}"
-    ).unwrap();
+    )
+    .unwrap();
 
     writeln!(w).unwrap();
     w.flush().unwrap();
@@ -259,9 +266,7 @@ pub fn print_mode_selector() -> bool {
 // ══════════════════════════════════════════════════════════════════════════════
 
 pub fn print_model_detect(model: &str, provider: &str, count: usize) {
-    println!(
-        " {I_WARN} Auto-detected: {AMBER}{model}{TEXT} ({provider}, {count} models){RESET}"
-    );
+    println!(" {I_WARN} Auto-detected: {AMBER}{model}{TEXT} ({provider}, {count} models){RESET}");
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -292,9 +297,7 @@ pub fn input_prompt_str() -> String {
 
 /// Echo the user's typed message back in styled form.
 pub fn print_user_echo(text: &str) {
-    println!(
-        "\n {MUTED}{I_PROMPT}  ╰─ {BRIGHT}>{RESET} {BRIGHT}{text}{RESET}"
-    );
+    println!("\n {MUTED}{I_PROMPT}  ╰─ {BRIGHT}>{RESET} {BRIGHT}{text}{RESET}");
 }
 
 /// Reasoning header shown while model is thinking.
@@ -344,13 +347,13 @@ pub fn print_response_body(text: &str) {
 
 /// Token stats footer after a response.
 pub fn print_token_stats(
-    prompt_k:     u32,
-    completion:   u32,
-    thinking:     u32,
-    session_usd:  f64,
-    input_total:  u32,
+    prompt_k: u32,
+    completion: u32,
+    thinking: u32,
+    session_usd: f64,
+    input_total: u32,
     output_total: u32,
-    turn:         u32,
+    turn: u32,
 ) {
     println!(
         " {MUTED}{I_ACTIVE}  {TEXT}{prompt_k}Kp  {completion}c  {thinking}t  \
@@ -370,13 +373,15 @@ pub fn print_token_stats(
 // ══════════════════════════════════════════════════════════════════════════════
 
 pub fn print_tool_call(tool: &str, args_summary: &str) {
-    println!(
-        " {AMBER}{I_PROC}{RESET}  {BRIGHT}{tool}{RESET}  {MUTED}{args_summary}{RESET}"
-    );
+    println!(" {AMBER}{I_PROC}{RESET}  {BRIGHT}{tool}{RESET}  {MUTED}{args_summary}{RESET}");
 }
 
 pub fn print_tool_result(success: bool, summary: &str) {
-    let (icon, color) = if success { (I_ADD, MINT) } else { (I_ERROR, FIRE) };
+    let (icon, color) = if success {
+        (I_ADD, MINT)
+    } else {
+        (I_ERROR, FIRE)
+    };
     println!(" {color}{icon}{RESET}  {TEXT}{summary}{RESET}");
 }
 
@@ -400,12 +405,7 @@ pub fn print_info(msg: &str) {
 // Compact session view  /compact
 // ══════════════════════════════════════════════════════════════════════════════
 
-pub fn print_session_summary(
-    turns:     u32,
-    total_in:  u32,
-    total_out: u32,
-    cost_usd:  f64,
-) {
+pub fn print_session_summary(turns: u32, total_in: u32, total_out: u32, cost_usd: f64) {
     println!();
     thin_rule_stdout();
     println!(" {VIOLET}{I_MARK}  SESSION SUMMARY{RESET}");
@@ -500,7 +500,7 @@ fn main() {
          — Tech Stack: Rust, Tokio, Reqwest, Clap, Serde\n\
          — Working Directory: /home/pratik/Desktop/dipralix\n\
          \n\
-         What are we building today?"
+         What are we building today?",
     );
     print_token_stats(3, 103, 52, 0.0006, 3, 0, 1);
 
@@ -515,7 +515,7 @@ fn main() {
          Context window clear, tools primed, ready to ship.\n\
          \n\
          What's on the DIPRALIX roadmap today? Ready to dive into\n\
-         the Rust source, run tests, or implement new features."
+         the Rust source, run tests, or implement new features.",
     );
     print_token_stats(3, 68, 96, 0.0013, 7, 0, 2);
 
@@ -530,7 +530,7 @@ fn main() {
          and I'm here to handle the heavy lifting.\n\
          \n\
          If there's a frustrating bug or block, let's look at it.\n\
-         What's the next task on the list?"
+         What's the next task on the list?",
     );
     print_token_stats(3, 92, 179, 0.0019, 11, 0, 3);
 

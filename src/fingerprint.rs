@@ -31,27 +31,44 @@ impl Fingerprint {
             has_tests: false,
             has_ci: Path::new(".github/workflows").exists() || Path::new(".gitlab-ci.yml").exists(),
             has_readme: Path::new("README.md").exists() || Path::new("readme.md").exists(),
-            has_license: Path::new("LICENSE").exists() || Path::new("LICENSE.md").exists() || Path::new("LICENSE.txt").exists(),
+            has_license: Path::new("LICENSE").exists()
+                || Path::new("LICENSE.md").exists()
+                || Path::new("LICENSE.txt").exists(),
             has_contributing: Path::new("CONTRIBUTING.md").exists(),
         };
 
         let root = std::env::current_dir().unwrap_or_default();
-        let src = if fp.dna.language == "rust" { root.join("src") } else { root.clone() };
+        let src = if fp.dna.language == "rust" {
+            root.join("src")
+        } else {
+            root.clone()
+        };
         if src.exists() {
-            for entry in walkdir::WalkDir::new(&src).max_depth(8).into_iter().filter_map(|e| e.ok()) {
+            for entry in walkdir::WalkDir::new(&src)
+                .max_depth(8)
+                .into_iter()
+                .filter_map(|e| e.ok())
+            {
                 let p = entry.path();
                 let s = p.to_string_lossy();
                 if s.contains("/target/") || s.contains("/node_modules/") || s.contains("/.") {
                     continue;
                 }
-                if !p.is_file() { continue; }
+                if !p.is_file() {
+                    continue;
+                }
                 let ext = p.extension().and_then(|e| e.to_str()).unwrap_or("");
-                if !matches!(ext, "rs" | "ts" | "tsx" | "js" | "jsx" | "py" | "go") { continue; }
+                if !matches!(ext, "rs" | "ts" | "tsx" | "js" | "jsx" | "py" | "go") {
+                    continue;
+                }
 
                 fp.files_scanned += 1;
                 if let Ok(content) = fs::read_to_string(p) {
                     fp.unwrap_count += content.matches(".unwrap()").count();
-                    if content.contains("#[test]") || content.contains("def test_") || content.contains("describe(") {
+                    if content.contains("#[test]")
+                        || content.contains("def test_")
+                        || content.contains("describe(")
+                    {
                         fp.has_tests = true;
                     }
                 }
@@ -64,11 +81,21 @@ impl Fingerprint {
     /// 0–100. Subtracts points for issues, adds points for hygiene.
     pub fn quality_score(&self) -> u32 {
         let mut score: i32 = 100;
-        if !self.has_readme       { score -= 10; }
-        if !self.has_license      { score -= 5; }
-        if !self.has_ci           { score -= 10; }
-        if !self.has_contributing { score -= 5; }
-        if !self.has_tests        { score -= 15; }
+        if !self.has_readme {
+            score -= 10;
+        }
+        if !self.has_license {
+            score -= 5;
+        }
+        if !self.has_ci {
+            score -= 10;
+        }
+        if !self.has_contributing {
+            score -= 5;
+        }
+        if !self.has_tests {
+            score -= 15;
+        }
         // Penalize unwraps in Rust (max -15)
         if self.dna.language == "rust" {
             let penalty = (self.unwrap_count as i32).min(15);
@@ -79,13 +106,26 @@ impl Fingerprint {
 
     pub fn issues(&self) -> Vec<String> {
         let mut issues = Vec::new();
-        if !self.has_readme { issues.push("Missing README.md".into()); }
-        if !self.has_license { issues.push("Missing LICENSE".into()); }
-        if !self.has_ci { issues.push("No CI pipeline (.github/workflows or .gitlab-ci.yml)".into()); }
-        if !self.has_contributing { issues.push("Missing CONTRIBUTING.md".into()); }
-        if !self.has_tests { issues.push("No tests detected".into()); }
+        if !self.has_readme {
+            issues.push("Missing README.md".into());
+        }
+        if !self.has_license {
+            issues.push("Missing LICENSE".into());
+        }
+        if !self.has_ci {
+            issues.push("No CI pipeline (.github/workflows or .gitlab-ci.yml)".into());
+        }
+        if !self.has_contributing {
+            issues.push("Missing CONTRIBUTING.md".into());
+        }
+        if !self.has_tests {
+            issues.push("No tests detected".into());
+        }
         if self.dna.language == "rust" && self.unwrap_count > 5 {
-            issues.push(format!("{} `.unwrap()` calls — consider `?` or `expect(\"why\")`", self.unwrap_count));
+            issues.push(format!(
+                "{} `.unwrap()` calls — consider `?` or `expect(\"why\")`",
+                self.unwrap_count
+            ));
         }
         issues
     }
@@ -94,16 +134,53 @@ impl Fingerprint {
 pub fn run_fingerprint() {
     println!("\n  {} Capturing project fingerprint...", "[FP]".cyan());
     let fp = Fingerprint::capture();
-    println!("  Files scanned: {}", fp.files_scanned.to_string().bright_white());
-    println!("  Language:      {}", if fp.dna.language.is_empty() { "unknown".dimmed().to_string() } else { fp.dna.language.cyan().to_string() });
-    println!("  Indent:        {} ({})", fp.dna.indent_style.cyan(), fp.dna.indent_width);
-    println!("  Tests:         {}", if fp.has_tests { "yes".green() } else { "no".red() });
-    println!("  CI:            {}", if fp.has_ci { "yes".green() } else { "no".red() });
-    println!("  README:        {}", if fp.has_readme { "yes".green() } else { "no".red() });
+    println!(
+        "  Files scanned: {}",
+        fp.files_scanned.to_string().bright_white()
+    );
+    println!(
+        "  Language:      {}",
+        if fp.dna.language.is_empty() {
+            "unknown".dimmed().to_string()
+        } else {
+            fp.dna.language.cyan().to_string()
+        }
+    );
+    println!(
+        "  Indent:        {} ({})",
+        fp.dna.indent_style.cyan(),
+        fp.dna.indent_width
+    );
+    println!(
+        "  Tests:         {}",
+        if fp.has_tests {
+            "yes".green()
+        } else {
+            "no".red()
+        }
+    );
+    println!(
+        "  CI:            {}",
+        if fp.has_ci { "yes".green() } else { "no".red() }
+    );
+    println!(
+        "  README:        {}",
+        if fp.has_readme {
+            "yes".green()
+        } else {
+            "no".red()
+        }
+    );
     if fp.dna.language == "rust" {
-        println!("  .unwrap() count: {}", fp.unwrap_count.to_string().yellow());
+        println!(
+            "  .unwrap() count: {}",
+            fp.unwrap_count.to_string().yellow()
+        );
     }
-    println!("\n  Quality Score: {}/100", fp.quality_score().to_string().bright_white().bold());
+    println!(
+        "\n  Quality Score: {}/100",
+        fp.quality_score().to_string().bright_white().bold()
+    );
     let issues = fp.issues();
     if !issues.is_empty() {
         println!("\n  {}", "Suggestions:".yellow());
@@ -144,14 +221,21 @@ pub fn run_init() -> anyhow::Result<()> {
     println!("  {} Wrote .dipralix/conventions.md", "[OK]".green());
     println!("  {} Wrote .dipralix/safety.toml", "[OK]".green());
     println!("  {} Wrote .dipralix/approval.toml", "[OK]".green());
-    println!("\n  Quality Score: {}/100\n", fp.quality_score().to_string().bright_white().bold());
+    println!(
+        "\n  Quality Score: {}/100\n",
+        fp.quality_score().to_string().bright_white().bold()
+    );
 
     Ok(())
 }
 
 fn write_if_missing(path: &str, content: &str) -> anyhow::Result<()> {
     if Path::new(path).exists() {
-        println!("  {} skipping {} (already exists)", "[--]".dimmed(), path.dimmed());
+        println!(
+            "  {} skipping {} (already exists)",
+            "[--]".dimmed(),
+            path.dimmed()
+        );
         return Ok(());
     }
     fs::write(path, content)?;
@@ -162,12 +246,22 @@ fn render_project_md(fp: &Fingerprint) -> String {
     let mut s = String::from("# Project DNA\n\n");
     s.push_str("Generated by `dipralix init`. Edit freely — this file is git-tracked.\n\n");
     s.push_str("## Stack\n\n");
-    s.push_str(&format!("- Language: **{}**\n", if fp.dna.language.is_empty() { "unknown" } else { &fp.dna.language }));
+    s.push_str(&format!(
+        "- Language: **{}**\n",
+        if fp.dna.language.is_empty() {
+            "unknown"
+        } else {
+            &fp.dna.language
+        }
+    ));
     s.push_str(&format!("- Build:    `{}`\n", fp.dna.build_command));
     s.push_str(&format!("- Test:     `{}`\n", fp.dna.test_command));
     s.push_str(&format!("- Lint:     `{}`\n", fp.dna.lint_command));
     s.push_str("\n## Style\n\n");
-    s.push_str(&format!("- Indent: {} × {}\n", fp.dna.indent_style, fp.dna.indent_width));
+    s.push_str(&format!(
+        "- Indent: {} × {}\n",
+        fp.dna.indent_style, fp.dna.indent_width
+    ));
     s.push_str(&format!("- Semicolons: {}\n", fp.dna.semicolons));
     s.push_str("\n## Quality Snapshot\n\n");
     s.push_str(&format!("- Files scanned: {}\n", fp.files_scanned));
@@ -220,7 +314,8 @@ deny = [
   "rm -rf /",
   "mkfs",
 ]
-"#.to_string()
+"#
+    .to_string()
 }
 
 fn render_approval_toml() -> String {
@@ -237,5 +332,6 @@ bash_git_push   = "Deny"
 bash_docker_run = "Confirm"
 bash_curl       = "Confirm"
 bash_sudo       = "Deny"
-"#.to_string()
+"#
+    .to_string()
 }
