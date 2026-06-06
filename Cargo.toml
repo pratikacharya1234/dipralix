@@ -55,3 +55,4 @@ futures      = "0.3"
 jsonwebtoken = { version = "10", default-features = false, features = ["rust_crypto"] }
 libc         = "0.2"
 tracing      = "0.1"
+serial_test  = "3"
