@@ -61,7 +61,7 @@ That's it. No login server. No telemetry. No subscription. You can `dipralix-cli
 
 ## ◆ What's in the box
 
-- **Two binaries.** `dipralix-cli` (the agent) and `dipralix-server` (the optional sync relay). Static, no Node, no Python, no Docker.
+- **Two binaries.** `dipralix-cli` (the agent) and `dipralix-server` (the optional sync relay). Static, no Node, no Python, no Docker. Prebuilt for **macOS (Intel + Apple Silicon), Linux (x86_64 + ARM64), and Windows (x86_64 + ARM64)** — the installer auto-detects yours.
 - **Three providers, one interface.** Gemini, Claude, OpenAI. Default routing is `auto` — it reads your prompt and picks a model. Override with `--model gemini-2.5-pro` when you know better.
 - **18 tools.** Read, write, edit, append, bash, list, list_symbols, search, glob, mkdir, delete, move, copy, url_fetch, git_snapshot, memorize_decision, memorize_pattern, record_outcome.
 - **Alive — the developer's mirror.** On first run Dipralix comes alive: you give it a nickname and tell it how to be; it researches an approach, you approve it, and that identity is carried into every session (`.dipralix/alive/identity.toml`). On every later start it reads its memory and resumes where you left off — no relearning. `/alive`, `/resume`, and `/evolve` (fold industry changes into memory over time).

@@ -45,6 +45,7 @@ case "$OS-$ARCH" in
   macos-arm64)   ASSET="macos-arm64" ;;
   macos-x86_64)  ASSET="macos-x86_64" ;;
   linux-x86_64)  ASSET="linux-x86_64" ;;
+  linux-arm64)   ASSET="linux-aarch64" ;;
   *)
     echo "No prebuilt binary for $OS-$ARCH yet."
     echo "Falling back to cargo install (requires Rust toolchain)."

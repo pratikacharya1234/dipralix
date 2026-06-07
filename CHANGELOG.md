@@ -15,6 +15,11 @@ All notable changes to Dipralix (formerly FORGE) are documented in this file.
 - v3 system prompt now opens with a "## Who you are" identity block.
 - Bumped to **0.3.2**.
 
+### Release
+- **All-platform prebuilt binaries.** The release matrix now builds six targets:
+  macOS x86_64 (Intel) + arm64 (Apple Silicon), Linux x86_64 + aarch64 (ARM),
+  Windows x86_64 + arm64. Installers auto-detect arch (`install.sh`, `install.ps1`).
+
 ### Verification
 - 168 tests pass (`cargo nextest`), including new `alive`, `resume`, and `evolve` unit tests. `cargo clippy --all-targets` clean, `cargo fmt --check` clean.
 

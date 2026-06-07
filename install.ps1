@@ -19,16 +19,18 @@ $Version = if ($env:DIPRALIX_VERSION) { $env:DIPRALIX_VERSION } else { 'latest' 
 
 # ── Arch detection ──────────────────────────────────────────────────────
 $arch = [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture
-if ($arch -ne 'X64') {
-    Write-Host "Currently only Windows x86_64 prebuilt binaries are published." -ForegroundColor Yellow
-    Write-Host "Your architecture: $arch" -ForegroundColor Yellow
-    Write-Host "Build from source instead:" -ForegroundColor Yellow
-    Write-Host "  git clone https://github.com/$Repo"
-    Write-Host "  cd dipralix"
-    Write-Host "  cargo build --release"
-    exit 1
+$AssetSuffix = switch ($arch) {
+    'X64'   { 'windows-x86_64' }
+    'Arm64' { 'windows-arm64' }
+    default {
+        Write-Host "No prebuilt Windows binary for architecture: $arch" -ForegroundColor Yellow
+        Write-Host "Build from source instead:" -ForegroundColor Yellow
+        Write-Host "  git clone https://github.com/$Repo"
+        Write-Host "  cd dipralix"
+        Write-Host "  cargo build --release"
+        exit 1
+    }
 }
-$AssetSuffix = 'windows-x86_64'
 
 # ── Resolve version ─────────────────────────────────────────────────────
 if ($Version -eq 'latest') {
