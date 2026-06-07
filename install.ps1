@@ -5,11 +5,11 @@
 # your user PATH so `dipralix-cli` works in any new terminal.
 #
 # Usage (PowerShell, no admin needed):
-#   irm https://raw.githubusercontent.com/pratikacharya1234/dipralix/main/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/Zyferon/dipralix/main/install.ps1 | iex
 #
 #   # or a specific version:
 #   $env:DIPRALIX_VERSION="v0.1.0"
-#   irm https://raw.githubusercontent.com/pratikacharya1234/dipralix/main/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/Zyferon/dipralix/main/install.ps1 | iex
 
 $ErrorActionPreference = 'Stop'
 

@@ -4,8 +4,8 @@
 # if /usr/local/bin isn't writable without sudo).
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/pratikacharya1234/dipralix/main/install.sh | bash
-#   curl -fsSL https://raw.githubusercontent.com/pratikacharya1234/dipralix/main/install.sh | bash -s -- --version v0.1.0
+#   curl -fsSL https://raw.githubusercontent.com/Zyferon/dipralix/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/Zyferon/dipralix/main/install.sh | bash -s -- --version v0.1.0
 #
 # Falls back to building from source via cargo if your platform isn't
 # available as a prebuilt binary (e.g. linux-aarch64, freebsd).

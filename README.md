@@ -34,17 +34,17 @@ Pick the line for your machine. Each one drops the prebuilt v0.3.2 binaries (`di
 
 ```bash
 # macOS · Linux
-curl -fsSL https://raw.githubusercontent.com/pratikacharya1234/dipralix/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Zyferon/dipralix/main/install.sh | bash
 ```
 
 ```powershell
 # Windows
-irm https://raw.githubusercontent.com/pratikacharya1234/dipralix/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/Zyferon/dipralix/main/install.ps1 | iex
 ```
 
 ```bash
 # From source — needs Rust 1.75+
-git clone https://github.com/pratikacharya1234/dipralix
+git clone https://github.com/Zyferon/dipralix
 cd dipralix && cargo build --release
 ```
 
@@ -119,7 +119,7 @@ Some things I don't pretend to have figured out:
 - **Approval matrix only gates bash today.** The Auto/Notify/Confirm/Deny matrix is wired for `bash` and its variants. File-tool gating ships next.
 - **Voice mode is shelved.** The EMBER module exists in the tree behind a feature flag. It's not part of the default build because the cross-platform mic story isn't where I want it.
 
-If you hit something rough, file it: https://github.com/pratikacharya1234/dipralix/issues. Use the bug template. I read all of them.
+If you hit something rough, file it: https://github.com/Zyferon/dipralix/issues. Use the bug template. I read all of them.
 
 ---
 
@@ -257,4 +257,4 @@ The model providers built the APIs. The Rust ecosystem built the rest — `tokio
 
 If this saves you an hour, star it. If it doesn't, tell me what broke.
 
-— [pratikacharya1234](https://github.com/pratikacharya1234)
+— [Zyferon](https://github.com/Zyferon)

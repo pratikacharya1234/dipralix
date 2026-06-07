@@ -5,7 +5,7 @@ Thanks for looking. Short doc — that's the whole intent.
 ## Setup
 
 ```bash
-git clone https://github.com/pratikacharya1234/dipralix
+git clone https://github.com/Zyferon/dipralix
 cd dipralix
 cargo build --release
 ./target/release/dipralix-cli --version
