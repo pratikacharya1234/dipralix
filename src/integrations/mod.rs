@@ -9,6 +9,8 @@ use crate::types::FunctionDeclaration;
 pub mod discord;
 pub mod github;
 pub mod google;
+pub mod notion;
+pub mod slack;
 
 // ── Integration Registry ─────────────────────────────────────────────────────
 
@@ -117,6 +119,18 @@ impl IntegrationRegistry {
             }
         }
 
+        if let Some(ref s_cfg) = config.slack {
+            if !s_cfg.bot_token.is_empty() {
+                reg.register(Box::new(slack::SlackIntegration::new(s_cfg)));
+            }
+        }
+
+        if let Some(ref n_cfg) = config.notion {
+            if !n_cfg.token.is_empty() {
+                reg.register(Box::new(notion::NotionIntegration::new(n_cfg)));
+            }
+        }
+
         reg
     }
 }
@@ -131,6 +145,10 @@ pub struct IntegrationsConfig {
     pub discord: Option<DiscordConfig>,
     #[serde(default)]
     pub google: Option<GoogleConfig>,
+    #[serde(default)]
+    pub slack: Option<SlackConfig>,
+    #[serde(default)]
+    pub notion: Option<NotionConfig>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -141,6 +159,16 @@ pub struct GithubConfig {
 #[derive(Clone, Debug, Default, Deserialize)]
 pub struct DiscordConfig {
     pub bot_token: String,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct SlackConfig {
+    pub bot_token: String,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct NotionConfig {
+    pub token: String,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -160,6 +188,10 @@ pub struct GoogleConfig {
 impl IntegrationsConfig {
     #[allow(dead_code)]
     pub fn has_any(&self) -> bool {
-        self.github.is_some() || self.discord.is_some() || self.google.is_some()
+        self.github.is_some()
+            || self.discord.is_some()
+            || self.google.is_some()
+            || self.slack.is_some()
+            || self.notion.is_some()
     }
 }

@@ -2,6 +2,22 @@
 
 All notable changes to Dipralix (formerly FORGE) are documented in this file.
 
+## [0.3.2] — 2026-06-06
+
+### Added — "Alive": the developer's mirror (5 phases, see `alive_Script.txt`)
+- **Phase 1 — Identity (`src/alive.rs`):** Dipralix now has a persisted identity at `.dipralix/alive/identity.toml` (nickname, persona, birth time, adopted approach). On first run it "comes alive" with an interactive dialogue (nickname → how-should-I-be), and its identity is injected into the system prompt every session (`{alive_context}`). `/alive`, `/alive nick <name>`, `/alive persona <…>`.
+- **Phase 2 — Research-and-adopt:** after the developer says how they want Dipralix to be, it researches a concrete operating approach (token-frugal), presents it for review, and adopts it on approval — stored in the identity and carried into every prompt.
+- **Phase 3 — Resume continuity (`src/resume.rs`):** on every start Dipralix reads the verified-outcome ledger, memory, and prior sessions and prints a "welcome back" briefing (last task in this repo + counts) — no relearning, no wasted tokens. `/resume`.
+- **Phase 4 — Connect the dev's life (`src/integrations/slack.rs`, `notion.rs`):** Slack (send message, list channels) and Notion (search, create page) integrations on top of the existing GitHub/Discord/Gmail/Drive + MCP. `/connect` shows the status of every connector.
+- **Phase 5 — Self-evolution (`src/evolve.rs`):** `/evolve` runs a token-budgeted research pass over stack-aware industry topics and folds timestamped findings into global memory, so running Dipralix over time compounds.
+
+### Changed
+- v3 system prompt now opens with a "## Who you are" identity block.
+- Bumped to **0.3.2**.
+
+### Verification
+- 168 tests pass (`cargo nextest`), including new `alive`, `resume`, and `evolve` unit tests. `cargo clippy --all-targets` clean, `cargo fmt --check` clean.
+
 ## [0.3.1] — 2026-06-06
 
 ### Added — Verified Outcome Ledger + Proof-of-Work (`src/ledger.rs`)

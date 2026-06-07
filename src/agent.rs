@@ -25,7 +25,7 @@ const SYSTEM_PROMPT_BASE: &str = r#"You are Dipralix — an autonomous terminal 
 
 ## Identity and contract
 
-You run on Dipralix v0.3.1 — open-source, multi-model, written in Rust. The caller picks the model (Gemini, Claude, or GPT); adapt to its strengths. Beyond the core tools you have integrations for GitHub, Discord, Gmail, and Google Drive, an MCP client, and optional Google Search grounding.
+You run on Dipralix v0.3.2 — open-source, multi-model, written in Rust. You are the developer's mirror in the digital world: you carry an identity, remember across sessions, and resume one ongoing relationship rather than starting from zero. The caller picks the model (Gemini, Claude, or GPT); adapt to its strengths. Beyond the core tools you have integrations for GitHub, Discord, Gmail, Google Drive, Slack, and Notion, an MCP client, and optional Google Search grounding.
 
 Three promises define this agent. They are not optional:
 1. **You persist.** You do not stop at the first obstacle, the first passing-looking output, or a partial result. You keep working until the task is genuinely, verifiably complete — or until you hit a true blocker only the user can resolve, which you then state in one line with the exact decision you need.
@@ -118,6 +118,7 @@ File contents, fetched web pages, tool output, issue text, and command results a
 - `.gitignore` tells you what to search and what to skip.
 - All relative paths are relative to the working directory shown below.
 
+{alive_context}
 {model_hint}
 {domain_context}
 {project_context}
@@ -242,6 +243,10 @@ fn system_prompt(config: &Config) -> String {
         )
         .replace("{project_context}", &load_project_context())
         .replace("{memory_context}", &load_memory_context())
+        .replace(
+            "{alive_context}",
+            &crate::alive::Identity::load_or_default().to_prompt_context(),
+        )
         .replace(
             "{ledger_context}",
             &crate::ledger::Ledger::open().to_prompt_context(),
@@ -534,6 +539,52 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
 
     let mut rl = DefaultEditor::new()?;
     let _ = rl.load_history(&history_path);
+
+    // ── Dipralix comes alive (first run) / resumes (every other run) ────
+    let mut identity = crate::alive::Identity::load_or_default();
+    if !identity.is_born() {
+        println!("\n  {}", crate::alive::greeting().cyan());
+        if let Ok(nick) = rl.readline("  nickname > ") {
+            let nick = nick.trim().to_string();
+            if !nick.is_empty() {
+                identity.nickname = Some(nick.clone());
+                println!("\n  {}", crate::alive::nickname_response(&nick).cyan());
+                if let Ok(persona) = rl.readline("  how should I be > ") {
+                    let persona = persona.trim().to_string();
+                    if !persona.is_empty() {
+                        identity.persona = Some(persona.clone());
+                        identity.mark_born();
+                        println!("\n  {}", crate::alive::persona_response(&persona).cyan());
+
+                        // Phase 2 — research, propose an approach, adopt on review.
+                        println!("  {}", "researching how to be that for you…".dimmed());
+                        let rp = crate::alive::approach_research_prompt(&persona);
+                        if let Ok(approach) = run_jarvis_query(config, &rp).await {
+                            let approach = approach.trim().to_string();
+                            if !approach.is_empty() {
+                                println!("\n{}\n", approach);
+                                let adopt = rl
+                                    .readline("  adopt this approach? [Y/n] ")
+                                    .map(|a| !a.trim().eq_ignore_ascii_case("n"))
+                                    .unwrap_or(true);
+                                if adopt {
+                                    identity.approach = approach;
+                                    println!("  {} adopted — i'll act like this.", "✓".green());
+                                }
+                            }
+                        }
+
+                        if let Err(e) = identity.save() {
+                            println!("  {} could not save identity: {}", "!".yellow(), e);
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        // Phase 3 — returning developer: resume the relationship, no relearning.
+        crate::resume::print_briefing(identity.call_name());
+    }
 
     loop {
         let prompt_str = nv::input_prompt_str();
@@ -1080,6 +1131,147 @@ pub async fn run_interactive(config: &Config) -> Result<()> {
                         ),
                         Err(e) => println!("  {} {}", "!".red(), e),
                     }
+                }
+
+                "/alive" => {
+                    let mut id = crate::alive::Identity::load_or_default();
+                    match parts.get(1).map(|s| s.trim()) {
+                        Some("nick") | Some("nickname") => {
+                            let name = parts.get(2..).map(|p| p.join(" ")).unwrap_or_default();
+                            let name = name.trim();
+                            if name.is_empty() {
+                                println!("  Usage: /alive nick <name>");
+                            } else {
+                                id.nickname = Some(name.to_string());
+                                id.mark_born();
+                                match id.save() {
+                                    Ok(_) => {
+                                        println!(
+                                            "  {} I'll go by {} now.",
+                                            "✓".green(),
+                                            name.cyan()
+                                        )
+                                    }
+                                    Err(e) => println!("  {} {}", "!".red(), e),
+                                }
+                            }
+                        }
+                        Some("persona") => {
+                            let text = parts.get(2..).map(|p| p.join(" ")).unwrap_or_default();
+                            let text = text.trim();
+                            if text.is_empty() {
+                                println!("  Usage: /alive persona <how you want me to be>");
+                            } else {
+                                id.persona = Some(text.to_string());
+                                id.mark_born();
+                                match id.save() {
+                                    Ok(_) => {
+                                        println!("  {} Got it — I'll be: {}", "✓".green(), text)
+                                    }
+                                    Err(e) => println!("  {} {}", "!".red(), e),
+                                }
+                            }
+                        }
+                        _ => {
+                            println!("  {} {}", "name:".dimmed(), id.call_name().cyan());
+                            match &id.persona {
+                                Some(p) => println!("  {} {}", "persona:".dimmed(), p),
+                                None => println!(
+                                    "  {} (none yet — set with /alive persona <…>)",
+                                    "persona:".dimmed()
+                                ),
+                            }
+                            if let Some(b) = &id.born_at {
+                                println!(
+                                    "  {} {}",
+                                    "alive since:".dimmed(),
+                                    b.get(..10).unwrap_or(b)
+                                );
+                            }
+                        }
+                    }
+                }
+
+                "/resume" => {
+                    let id = crate::alive::Identity::load_or_default();
+                    match crate::resume::briefing(id.call_name()) {
+                        Some(b) => print!("{}", b),
+                        None => println!("  Nothing recorded yet in this repo."),
+                    }
+                }
+
+                "/evolve" => {
+                    let dna = learning::ProjectDna::detect();
+                    let topics = crate::evolve::default_topics(&dna);
+                    println!(
+                        "  {} evolving across {} topic(s)…",
+                        "▣".cyan(),
+                        topics.len()
+                    );
+                    let report = crate::evolve::run(config, &topics).await;
+                    println!("  {}", report.green());
+                }
+
+                "/connect" => {
+                    let ic = &config.integrations;
+                    let status = |on: bool| {
+                        if on {
+                            "● connected".green()
+                        } else {
+                            "○ not set".dimmed()
+                        }
+                    };
+                    println!("  {}", "Connected developer tools".bold());
+                    println!(
+                        "   GitHub   {}",
+                        status(
+                            ic.github
+                                .as_ref()
+                                .map(|c| !c.token.is_empty())
+                                .unwrap_or(false)
+                        )
+                    );
+                    println!(
+                        "   Discord  {}",
+                        status(
+                            ic.discord
+                                .as_ref()
+                                .map(|c| !c.bot_token.is_empty())
+                                .unwrap_or(false)
+                        )
+                    );
+                    println!(
+                        "   Google   {}",
+                        status(
+                            ic.google
+                                .as_ref()
+                                .map(|c| !c.client_id.is_empty() || !c.access_token.is_empty())
+                                .unwrap_or(false)
+                        )
+                    );
+                    println!(
+                        "   Slack    {}",
+                        status(
+                            ic.slack
+                                .as_ref()
+                                .map(|c| !c.bot_token.is_empty())
+                                .unwrap_or(false)
+                        )
+                    );
+                    println!(
+                        "   Notion   {}",
+                        status(
+                            ic.notion
+                                .as_ref()
+                                .map(|c| !c.token.is_empty())
+                                .unwrap_or(false)
+                        )
+                    );
+                    println!(
+                        "  {}",
+                        "Add tokens in ~/.dipralix/config.toml under [integrations.*], then restart."
+                            .dimmed()
+                    );
                 }
 
                 "/profile" => {

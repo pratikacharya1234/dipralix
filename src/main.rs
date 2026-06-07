@@ -4,6 +4,7 @@ use clap::Parser;
 use dipralix::sync;
 
 mod agent;
+mod alive;
 mod approval;
 mod ast;
 mod audit;
@@ -19,6 +20,7 @@ mod domain_bootstrap;
 mod domain_knowledge;
 #[cfg(feature = "ember")]
 mod ember;
+mod evolve;
 mod fingerprint;
 mod infra;
 mod integrations;
@@ -32,6 +34,7 @@ mod orchestrator;
 mod packer;
 mod plan_visualizer;
 mod project;
+mod resume;
 mod safety;
 mod security;
 mod session;
